@@ -20,6 +20,7 @@ func main() {
 
 	router.Handle("/", middleware.NewSessionMiddleware(handlers.NewGreetHandler(config, log), config))
 	router.Handle("/grid", middleware.NewSessionMiddleware(handlers.NewGridHandler(config, log), config))
+	router.Handle("/api/set-name", middleware.NewSessionMiddleware(handlers.NewNameHandler(config, log), config))
 
 	server := &http.Server{
 		Addr:         "localhost:9000",

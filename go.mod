@@ -6,6 +6,7 @@ require github.com/a-h/templ v0.2.778
 
 require (
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
+	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
