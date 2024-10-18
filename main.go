@@ -18,13 +18,15 @@ func main() {
 
 	router := http.NewServeMux()
 
-	router.Handle("/", middleware.NewSessionMiddleware(handlers.NewGreetHandler(config, log), config))
-	router.Handle("/grid", middleware.NewSessionMiddleware(handlers.NewGridHandler(config, log), config))
-	router.Handle("/api/set-name", middleware.NewSessionMiddleware(handlers.NewNameHandler(config, log), config))
+	router.Handle("/", handlers.NewGreetHandler(config, log))
+	router.Handle("/grid", handlers.NewGridHandler(config, log))
+	router.Handle("/api/name", handlers.NewNameHandler(config, log))
+
+	session := middleware.NewSessionMiddleware(router, config)
 
 	server := &http.Server{
 		Addr:         "localhost:9000",
-		Handler:      router,
+		Handler:      session,
 		ReadTimeout:  time.Second * 10,
 		WriteTimeout: time.Second * 10,
 	}

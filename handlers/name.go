@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/MatthewJM96/susnames/components"
 	"github.com/goombaio/namegenerator"
 	"github.com/spf13/viper"
 )
@@ -23,20 +24,40 @@ type NameHandler struct {
 }
 
 func (h *NameHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
+	if r.Method == http.MethodGet {
+		h.Get(w, r)
+	} else if r.Method == http.MethodPost {
 		h.Post(w, r)
-		return
+	} else {
+		http.Error(w, "only supports Get/POST", 405)
 	}
-	http.Error(w, "only supports POST", 405)
+}
+
+func genName() string {
+	seed := time.Now().UTC().UnixNano()
+	nameGenerator := namegenerator.NewNameGenerator(seed)
+
+	return nameGenerator.Generate()
+}
+
+func getName(r *http.Request) string {
+	cookie, err := r.Cookie("name")
+	if err != nil {
+		return genName()
+	}
+	return cookie.Value
+}
+
+func (h *NameHandler) Get(w http.ResponseWriter, r *http.Request) {
+	name := getName(r)
+
+	components.Greeting(name).Render(r.Context(), w)
 }
 
 func (h *NameHandler) Post(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 
-	seed := time.Now().UTC().UnixNano()
-	nameGenerator := namegenerator.NewNameGenerator(seed)
-
-	name := nameGenerator.Generate()
+	name := genName()
 	if r.Form.Has("name") {
 		name = r.FormValue("name")
 
@@ -46,4 +67,6 @@ func (h *NameHandler) Post(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.SetCookie(w, &http.Cookie{Name: "name", Value: name, Secure: h.Config.GetBool("secure"), HttpOnly: h.Config.GetBool("http_only")})
+
+	components.Greeting(name).Render(r.Context(), w)
 }
