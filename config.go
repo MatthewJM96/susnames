@@ -10,7 +10,7 @@ func loadConfig() *viper.Viper {
 	config := viper.New()
 
 	config.SetConfigFile(".env")
-	config.SetConfigType("envfile")
+	config.SetConfigType("env")
 
 	config.AddConfigPath(".")
 
