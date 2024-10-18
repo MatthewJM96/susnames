@@ -9,19 +9,19 @@ import (
 	"github.com/spf13/viper"
 )
 
-func New(config *viper.Viper, log *slog.Logger) *DefaultHandler {
-	return &DefaultHandler{
+func NewGreetHandler(config *viper.Viper, log *slog.Logger) *GreetHandler {
+	return &GreetHandler{
 		Config: config,
 		Log:    log,
 	}
 }
 
-type DefaultHandler struct {
+type GreetHandler struct {
 	Config *viper.Viper
 	Log    *slog.Logger
 }
 
-func (h *DefaultHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *GreetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		h.Post(w, r)
 		return
@@ -29,7 +29,7 @@ func (h *DefaultHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.Get(w, r)
 }
 
-func (h *DefaultHandler) Get(w http.ResponseWriter, r *http.Request) {
+func (h *GreetHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if h.Config.GetBool("debug") {
 		println()
 
@@ -40,11 +40,10 @@ func (h *DefaultHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	components.Page(
 		components.HelloPage("John"),
-		components.Card("tasty"),
 	).Render(r.Context(), w)
 }
 
-func (h *DefaultHandler) Post(w http.ResponseWriter, r *http.Request) {
+func (h *GreetHandler) Post(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 
 	name := "John"

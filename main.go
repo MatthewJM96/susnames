@@ -15,11 +15,14 @@ func main() {
 
 	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 
-	h := handlers.New(config, log)
+	router := http.NewServeMux()
+
+	router.Handle("/", handlers.NewGreetHandler(config, log))
+	router.Handle("/grid", handlers.NewGridHandler(config, log))
 
 	server := &http.Server{
 		Addr:         "localhost:9000",
-		Handler:      h,
+		Handler:      router,
 		ReadTimeout:  time.Second * 10,
 		WriteTimeout: time.Second * 10,
 	}
