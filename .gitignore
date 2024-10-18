@@ -1,2 +1,5 @@
 # Go sum file.
 go.sum
+
+# envfile
+.env
