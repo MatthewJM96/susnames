@@ -11,8 +11,11 @@ import (
 )
 
 func main() {
+	config := loadConfig()
+
 	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
-	h := handlers.New(log)
+
+	h := handlers.New(config, log)
 
 	server := &http.Server{
 		Addr:         "localhost:9000",

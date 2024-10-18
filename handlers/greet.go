@@ -6,16 +6,19 @@ import (
 	"os"
 
 	"github.com/MatthewJM96/susnames/components"
+	"github.com/spf13/viper"
 )
 
-func New(log *slog.Logger) *DefaultHandler {
+func New(config *viper.Viper, log *slog.Logger) *DefaultHandler {
 	return &DefaultHandler{
-		Log: log,
+		Config: config,
+		Log:    log,
 	}
 }
 
 type DefaultHandler struct {
-	Log *slog.Logger
+	Config *viper.Viper
+	Log    *slog.Logger
 }
 
 func (h *DefaultHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -27,9 +30,11 @@ func (h *DefaultHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *DefaultHandler) Get(w http.ResponseWriter, r *http.Request) {
-	println()
-	components.Page(components.HelloPage("John")).Render(r.Context(), os.Stdout)
-	println()
+	if h.Config.GetBool("debug") {
+		println()
+		components.Page(components.HelloPage("John")).Render(r.Context(), os.Stdout)
+		println()
+	}
 
 	components.Page(components.HelloPage("John")).Render(r.Context(), w)
 }
@@ -42,9 +47,11 @@ func (h *DefaultHandler) Post(w http.ResponseWriter, r *http.Request) {
 		name = r.FormValue("name")
 	}
 
-	println()
-	components.Greeting(name).Render(r.Context(), os.Stdout)
-	println()
+	if h.Config.GetBool("debug") {
+		println()
+		components.Greeting(name).Render(r.Context(), os.Stdout)
+		println()
+	}
 
 	components.Greeting(name).Render(r.Context(), w)
 }
