@@ -3,3 +3,6 @@ go.sum
 
 # envfile
 .env
+
+# Templ-generated files.
+*_templ.go
