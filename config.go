@@ -15,6 +15,8 @@ func loadConfig() *viper.Viper {
 	config.AddConfigPath(".")
 
 	config.SetDefault("debug", false)
+	config.SetDefault("secure", true)
+	config.SetDefault("http_only", true)
 
 	err := config.ReadInConfig()
 	if err != nil {

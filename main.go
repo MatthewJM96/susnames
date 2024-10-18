@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/MatthewJM96/susnames/handlers"
+	"github.com/MatthewJM96/susnames/middleware"
 )
 
 func main() {
@@ -17,8 +18,8 @@ func main() {
 
 	router := http.NewServeMux()
 
-	router.Handle("/", handlers.NewGreetHandler(config, log))
-	router.Handle("/grid", handlers.NewGridHandler(config, log))
+	router.Handle("/", middleware.NewSessionMiddleware(handlers.NewGreetHandler(config, log), config))
+	router.Handle("/grid", middleware.NewSessionMiddleware(handlers.NewGridHandler(config, log), config))
 
 	server := &http.Server{
 		Addr:         "localhost:9000",
