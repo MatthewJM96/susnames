@@ -4,17 +4,34 @@ templ Page(components ...templ.Component) {
     <head>
         <script src="https://unpkg.com/htmx.org@2.0.3" integrity="sha384-0895/pl2MU10Hqc6jd4RvrthNlDiE9U1tWmX7WRESftEDRosgxNsQG/Ze9YMRzHq" crossorigin="anonymous"></script>
         <style>
+            #grid {
+                padding: 10px
+                width: fit-content;
+                height: fit-content;
+            }
+
+            .card-row:not(:last-child) {
+                margin-bottom: 5px;
+            }
+
             .card {
-                max-width: 3.91em;
-                height: 2.2em;
+                display: inline-block;
 
-                font-size: 3em;
+                height: 3.6em;
+                aspect-ratio: 16 / 9;
+                width: auto;
 
-                line-height: 2.2em;
+                font-size: 2rem;
+
+                line-height: 3.6em;
                 text-align: center;
 
                 border-radius: 6px;
                 background-color: bisque;
+            }
+
+            .card:not(:last-child) {
+                margin-right: 5px;
             }
         </style>
     </head>

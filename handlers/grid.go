@@ -39,7 +39,7 @@ func (h *GridHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	components.Page(
-		components.Card("tasty"),
+		components.Grid([25]string{"relinquish", "genuine", "formula", "gain", "established", "development", "long", "personality", "package", "reveal", "premium", "carve", "authority", "blast", "compromise", "acid", "video", "live", "eject", "redundancy", "announcement", "tear", "depressed", "cunning", "child"}),
 	).Render(r.Context(), w)
 }
 

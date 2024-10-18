@@ -1,0 +1,17 @@
+package components
+
+templ card(contents string) {
+	<div class="card">{ contents }</div>
+}
+
+templ Grid(contents [25]string) {
+	<div id="grid">
+		for i := range 5 {
+			<div class="card-row">
+				for j := range 5 {
+					@card(contents[i * 5 + j])
+				}
+			</div>
+		}
+	</div>
+}
