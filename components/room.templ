@@ -1,0 +1,7 @@
+package components
+
+templ Room(room_name string, grid templ.Component) {
+	<div id="room" hx-ext="ws" ws-connect="{ room_name }">
+		@grid
+	</div>
+}
