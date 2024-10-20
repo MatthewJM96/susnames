@@ -29,7 +29,7 @@ func (h *NameHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else if r.Method == http.MethodPost {
 		h.Post(w, r)
 	} else {
-		http.Error(w, "only supports Get/POST", http.StatusMethodNotAllowed)
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 	}
 }
 
