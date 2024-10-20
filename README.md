@@ -13,6 +13,8 @@ cd susnames
 templ generate
 ```
 
+> NOTE: if you get an error that reads something like `no required module provides package github.com/MatthewJM96/susnames/components` then you haven't ran the `templ generate` command.
+
 You can now spin up the webserver and have a play, you can access the webpage [here](http://localhost:9000/):
 ```sh
 go run .
