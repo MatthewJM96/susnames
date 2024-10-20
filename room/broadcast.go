@@ -7,11 +7,11 @@ import (
 	"github.com/MatthewJM96/susnames/components"
 )
 
-func (room *Room) BroadcastMessage(message []byte, exclude *Player) {
-	room.PlayersMutex.Lock()
-	defer room.PlayersMutex.Unlock()
+func (r *Room) BroadcastMessage(message []byte, exclude *Player) {
+	r.PlayersMutex.Lock()
+	defer r.PlayersMutex.Unlock()
 
-	for _, player := range room.Players {
+	for _, player := range r.Players {
 		if player == exclude {
 			continue
 		}
@@ -24,9 +24,9 @@ func (room *Room) BroadcastMessage(message []byte, exclude *Player) {
 	}
 }
 
-func (room *Room) BroadcastPlayerInfo(ctx context.Context, player *Player) {
+func (r *Room) BroadcastPlayerInfo(ctx context.Context, player *Player) {
 	buf := new(bytes.Buffer)
 	components.PlayerNameTag(player.SessionID, player.Name).Render(ctx, buf)
 
-	room.BroadcastMessage(buf.Bytes(), player)
+	r.BroadcastMessage(buf.Bytes(), player)
 }

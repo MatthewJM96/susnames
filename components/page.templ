@@ -3,10 +3,21 @@ package components
 templ Page(components ...templ.Component) {
     <!doctype html>
     <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="https://cdn.tailwindcss.com"></script>
         <script src="https://unpkg.com/htmx.org@2.0.3" integrity="sha384-0895/pl2MU10Hqc6jd4RvrthNlDiE9U1tWmX7WRESftEDRosgxNsQG/Ze9YMRzHq" crossorigin="anonymous"></script>
         <script src="https://unpkg.com/htmx-ext-ws@2.0.1/ws.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.5" integrity="sha256-WCzAhd2P6gRJF9Hv3oOOd+hFJi/QJbv+Azn4CGB8gfY=" crossorigin="anonymous" async="true"></script>
         <style>
+            header {
+                margin-left: 1rem;
+
+                font-family: cursive;
+                font-size: 3rem;
+                font-weight: bold;
+            }
+
             #grid {
                 padding: 10px;
                 width: max-content;
@@ -39,8 +50,12 @@ templ Page(components ...templ.Component) {
         </style>
     </head>
 	<body>
-        for _, component := range components {
-            @component
-        }
+        <header>Susnames</header>
+
+        <div id="contents">
+            for _, component := range components {
+                @component
+            }
+        </div>
     </body>
 }

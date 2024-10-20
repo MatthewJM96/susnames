@@ -3,9 +3,9 @@ package room
 import (
 	"fmt"
 	"log/slog"
-	"net/http"
 	"sync"
 
+	"github.com/MatthewJM96/susnames/util"
 	"github.com/spf13/viper"
 )
 
@@ -21,22 +21,24 @@ type Room struct {
 
 var rooms map[string]*Room = make(map[string]*Room)
 
-func NewRoomsMux() *http.ServeMux {
-	mux := http.NewServeMux()
-
-	for name, room := range rooms {
-		mux.HandleFunc("/room/"+name, room.ConnectPlayerToRoom)
-		mux.HandleFunc("POST /room/"+name+"/name", room.SetPlayerName)
-	}
-
-	return mux
+func GenerateRoomName() string {
+	return util.GenerateRandomThreePartName()
 }
 
-func CreateRoom(name string, config *viper.Viper, log *slog.Logger) (*Room, error) {
-	_, exists := rooms[name]
-	if exists {
-		return nil, fmt.Errorf("room already exists with name: %s", name)
+func CreateRoom(config *viper.Viper, log *slog.Logger) (*Room, error) {
+	var name string
+
+	exists := true
+	for range 5 {
+		name = GenerateRoomName()
+
+		_, exists = rooms[name]
 	}
+	if exists {
+		return nil, fmt.Errorf("room name kept colliding, last tried: %s", name)
+	}
+
+	log.Info(fmt.Sprintf("created room: %s", name))
 
 	room := &Room{
 		Config:  config,

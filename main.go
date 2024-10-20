@@ -7,8 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/MatthewJM96/susnames/handlers"
-	"github.com/MatthewJM96/susnames/room"
+	"github.com/MatthewJM96/susnames/handler"
 	"github.com/MatthewJM96/susnames/session"
 )
 
@@ -17,11 +16,13 @@ func main() {
 
 	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 
-	room.CreateRoom("test-room", config, log)
+	handlers := handler.NewHandler(config, log)
 
-	router := room.NewRoomsMux()
-
-	router.Handle("/grid", handlers.NewGridHandler(config, log))
+	router := http.NewServeMux()
+	router.HandleFunc("GET /", handlers.Home)
+	router.HandleFunc("POST /create-room", handlers.CreateRoom)
+	router.HandleFunc("GET /room/{name}", handlers.ConnectPlayerToRoom)
+	router.HandleFunc("POST /room/{name}/name", handlers.SetPlayerName)
 
 	session := session.NewSessionMiddleware(router, config)
 
