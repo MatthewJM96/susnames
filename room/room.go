@@ -13,13 +13,15 @@ type Room struct {
 	Config *viper.Viper
 	Log    *slog.Logger
 
+	Name string
+
 	Players      map[string]*Player
 	PlayersMutex sync.Mutex
 }
 
 var rooms map[string]*Room = make(map[string]*Room)
 
-func GetRoomsMux() *http.ServeMux {
+func NewRoomsMux() *http.ServeMux {
 	mux := http.NewServeMux()
 
 	for name, room := range rooms {
@@ -39,6 +41,7 @@ func CreateRoom(name string, config *viper.Viper, log *slog.Logger) (*Room, erro
 	room := &Room{
 		Config:  config,
 		Log:     log,
+		Name:    name,
 		Players: make(map[string]*Player),
 	}
 

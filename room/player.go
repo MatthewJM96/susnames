@@ -30,11 +30,11 @@ func GeneratePlayerName() string {
 
 func NewPlayer(session_id string, room *Room, msgs chan []byte, closeConn func()) *Player {
 	return &Player{
-		session_id,
-		GeneratePlayerName(),
-		room,
-		msgs,
-		closeConn,
+		SessionID: session_id,
+		Name:      GeneratePlayerName(),
+		Room:      room,
+		Msgs:      msgs,
+		CloseConn: closeConn,
 	}
 }
 
@@ -126,6 +126,8 @@ func (room *Room) addPlayer(session_id string, closeConn func()) (*Player, error
 	)
 	room.Players[session_id] = player
 
+	room.Log.Info(fmt.Sprintf("added player: (%s, %s) to room %s", session_id, player.Name, room.Name))
+
 	room.PlayersMutex.Unlock()
 
 	return player, nil
@@ -134,10 +136,12 @@ func (room *Room) addPlayer(session_id string, closeConn func()) (*Player, error
 func (room *Room) removePlayer(session_id string) error {
 	room.PlayersMutex.Lock()
 
-	_, exists := room.Players[session_id]
+	player, exists := room.Players[session_id]
 	if !exists {
 		return fmt.Errorf("player with session ID does not exist to remove from room: %s", session_id)
 	}
+
+	room.Log.Info(fmt.Sprintf("removed player: (%s, %s) from room %s", session_id, player.Name, room.Name))
 
 	delete(room.Players, session_id)
 
@@ -148,7 +152,7 @@ func (room *Room) removePlayer(session_id string) error {
 
 func (room *Room) GetPlayer(session_id string) (*Player, error) {
 	player, exists := room.Players[session_id]
-	if !exists {
+	if !exists || player == nil {
 		return nil, fmt.Errorf("no player exists with session ID: %s", session_id)
 	}
 
@@ -181,7 +185,7 @@ func (room *Room) SetPlayerName(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	room.Log.Info(fmt.Sprintf("set player name: %s", name))
+	room.Log.Info(fmt.Sprintf("set player name: (%s, %s) to %s", session_id, player.Name, name))
 
 	/**
 	 * Set player name and broadcast the change.
