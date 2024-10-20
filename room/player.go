@@ -79,7 +79,7 @@ func (r *Room) ConnectPlayerToRoom(writer http.ResponseWriter, request *http.Req
 	/**
 	 * Broadcast the existence of a new player in the room.
 	 */
-	r.BroadcastPlayerInfo(request.Context(), player)
+	r.BroadcastPlayerList(request.Context())
 
 	/**
 	 * Until connection is closed keep publishing messages that we have in queue to
@@ -144,6 +144,8 @@ func (r *Room) removePlayer(session_id string) error {
 
 	r.PlayersMutex.Unlock()
 
+	r.BroadcastPlayerList(context.Background())
+
 	return nil
 }
 
@@ -194,5 +196,5 @@ func (r *Room) SetPlayerName(writer http.ResponseWriter, request *http.Request) 
 
 	player.Name = name
 
-	r.BroadcastPlayerInfo(request.Context(), player)
+	r.BroadcastPlayerList(request.Context())
 }
