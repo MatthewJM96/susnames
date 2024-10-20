@@ -3,6 +3,7 @@ package components
 templ Room(room_name string, grid templ.Component) {
 	<div id="room" hx-ext="ws" ws-connect={ "room/"+room_name }
 	hx-on::ws-connecting="console.log('connecting!')" hx-on::ws-open="console.log('connected!')" hx-on::ws-close="console.log('closed!')">
+		@PlayerNameTag("2niBbSZ7vpPea8peYwpxyGtyc01", "george")
 		@grid
 	</div>
 }
