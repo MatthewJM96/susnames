@@ -23,7 +23,6 @@ func main() {
 
 	router.Handle("/", handlers.NewGreetHandler(config, log))
 	router.Handle("/grid", handlers.NewGridHandler(config, log))
-	router.Handle("/api/name", handlers.NewNameHandler(config, log))
 
 	session := session.NewSessionMiddleware(router, config)
 
