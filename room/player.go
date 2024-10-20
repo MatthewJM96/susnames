@@ -165,11 +165,14 @@ func (r *Room) SetPlayerName(writer http.ResponseWriter, request *http.Request) 
 	player, err := r.GetPlayer(session_id)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	/**
 	 * Get name to set player to, generating one if we didn't get given one.
 	 */
+	request.ParseForm()
+
 	name := ""
 	if request.Form.Has("name") {
 		name = request.FormValue("name")

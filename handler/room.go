@@ -15,6 +15,8 @@ func (h *Handler) CreateRoom(writer http.ResponseWriter, request *http.Request) 
 		return
 	}
 
+	writer.Header().Add("HX-Push-Url", "/room/"+room.Name)
+
 	components.Room(
 		room.Name,
 		components.Grid(
@@ -31,17 +33,8 @@ func (h *Handler) CreateRoom(writer http.ResponseWriter, request *http.Request) 
 	)
 }
 
-func (h *Handler) JoinRoom(writer http.ResponseWriter, request *http.Request) {
-	request.ParseForm()
-
-	if !request.Form.Has("name") {
-		http.Error(writer, "must supply a name of room to join", http.StatusBadRequest)
-	}
-
-	roomName := request.FormValue("name")
-	if roomName == "" {
-		http.Error(writer, "must supply a name of room to join", http.StatusBadRequest)
-	}
+func (h *Handler) ViewRoom(writer http.ResponseWriter, request *http.Request) {
+	roomName := request.PathValue("name")
 
 	room := room.GetRoom(roomName)
 	if room == nil {
@@ -49,7 +42,7 @@ func (h *Handler) JoinRoom(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	components.Room(
+	view := components.Room(
 		room.Name,
 		components.Grid(
 			[25]string{
@@ -59,7 +52,13 @@ func (h *Handler) JoinRoom(writer http.ResponseWriter, request *http.Request) {
 				"tear", "depressed", "cunning", "child",
 			},
 		),
-	).Render(
+	)
+
+	if request.Method == http.MethodGet {
+		view = components.Page(view)
+	}
+
+	view.Render(
 		request.Context(),
 		writer,
 	)

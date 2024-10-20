@@ -21,8 +21,9 @@ func main() {
 	router := http.NewServeMux()
 	router.HandleFunc("GET /", handlers.Home)
 	router.HandleFunc("POST /create-room", handlers.CreateRoom)
-	router.HandleFunc("POST /join-room", handlers.JoinRoom)
-	router.HandleFunc("GET /room/{name}", handlers.ConnectPlayerToRoom)
+	router.HandleFunc("GET /room/{name}", handlers.ViewRoom)
+	router.HandleFunc("POST /room/{name}", handlers.ViewRoom)
+	router.HandleFunc("GET /room/{name}/conn", handlers.ConnectPlayerToRoom)
 	router.HandleFunc("POST /room/{name}/name", handlers.SetPlayerName)
 
 	session := session.NewSessionMiddleware(router, config)
