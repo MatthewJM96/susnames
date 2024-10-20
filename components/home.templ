@@ -1,7 +1,11 @@
 package components
 
 templ Home() {
-    <button id="create-room-form" hx-post="/create-room" hx-target="#contents" hx-swap="innerHTML">
+    <button id="create-room" hx-post="/create-room" hx-target="#contents" hx-swap="innerHTML">
 		Create Room
 	</button>
+	or
+	<form id="join-room" hx-post="/join-room" hx-target="#contents" hx-swap="innerHTML">
+		<button>Join room:</button> <input type="text" name="name" placeholder="room name">
+	</form>
 }
