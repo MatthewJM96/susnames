@@ -1,13 +1,16 @@
 package components
 
 templ PlayerNameTag(session_id string, name string) {
-	<div id={ "name-tag-" + session_id } class="name-tag">{ name }</div>
+	<li id={ "name-tag-" + session_id } class="name-tag">{ name }</li>
 }
 
 templ PlayerList(tags []templ.Component) {
 	<div id="player-list">
-		for _, tag := range tags {
-			@tag
-		}
+		<strong>Players:</strong>
+		<ul>
+			for _, tag := range tags {
+				@tag
+			}
+		</ul>
 	</div>
 }
