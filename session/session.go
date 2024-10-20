@@ -1,4 +1,4 @@
-package middleware
+package session
 
 import (
 	"net/http"
@@ -36,8 +36,8 @@ type SessionMiddleware struct {
 	HTTPOnly bool
 }
 
-func GetID(r *http.Request) string {
-	cookie, err := r.Cookie("sessionID")
+func GetSessionID(r *http.Request) string {
+	cookie, err := r.Cookie("SessionID")
 	if err != nil {
 		return ""
 	}
@@ -45,10 +45,10 @@ func GetID(r *http.Request) string {
 }
 
 func (mw SessionMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	id := GetID(r)
+	id := GetSessionID(r)
 	if id == "" {
 		id = ksuid.New().String()
-		http.SetCookie(w, &http.Cookie{Name: "sessionID", Value: id, Secure: mw.Secure, HttpOnly: mw.HTTPOnly})
+		http.SetCookie(w, &http.Cookie{Name: "SessionID", Value: id, Secure: mw.Secure, HttpOnly: mw.HTTPOnly})
 	}
 
 	mw.Next.ServeHTTP(w, r)
