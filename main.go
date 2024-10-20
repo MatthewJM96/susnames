@@ -21,7 +21,6 @@ func main() {
 
 	router := room.NewRoomsMux()
 
-	router.Handle("/", handlers.NewGreetHandler(config, log))
 	router.Handle("/grid", handlers.NewGridHandler(config, log))
 
 	session := session.NewSessionMiddleware(router, config)

@@ -30,20 +30,20 @@ func (h *GridHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *GridHandler) Get(w http.ResponseWriter, r *http.Request) {
-	if h.Config.GetBool("debug") {
-		println()
-
-		components.Page(components.HelloPage("John")).Render(r.Context(), os.Stdout)
-
-		println()
-	}
-
-	components.Page(
+	view := components.Page(
 		components.Room(
 			"test-room",
 			components.Grid([25]string{"relinquish", "genuine", "formula", "gain", "established", "development", "long", "personality", "package", "reveal", "premium", "carve", "authority", "blast", "compromise", "acid", "video", "live", "eject", "redundancy", "announcement", "tear", "depressed", "cunning", "child"}),
 		),
-	).Render(r.Context(), w)
+	)
+
+	if h.Config.GetBool("debug") {
+		println()
+		view.Render(r.Context(), os.Stdout)
+		println()
+	}
+
+	view.Render(r.Context(), w)
 }
 
 func (h *GridHandler) Post(w http.ResponseWriter, r *http.Request) {
