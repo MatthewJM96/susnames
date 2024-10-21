@@ -3,6 +3,12 @@ package components
 templ Room(room_name string, grid templ.Component) {
 	<div id="room" hx-ext="ws" ws-connect={ "/room/"+room_name+"/conn" }>
 		<div id="player-list"></div>
+		<form id="player-name-changer" hx-post={ "/room/"+room_name+"/name" } hx-swap="none">
+			<button>Change name:</button> <input type="text" name="name" placeholder="name">
+		</form>
+
+		<br><br>
+
 		@grid
 	</div>
 }
