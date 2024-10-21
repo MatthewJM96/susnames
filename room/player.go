@@ -25,10 +25,10 @@ func GeneratePlayerName() string {
 	return util.GenerateRandomTwoPartName()
 }
 
-func NewPlayer(session_id string, room *Room, msgs chan []byte, closeConn func()) *Player {
+func NewPlayer(session_id string, name string, room *Room, msgs chan []byte, closeConn func()) *Player {
 	return &Player{
 		SessionID: session_id,
-		Name:      GeneratePlayerName(),
+		Name:      name,
 		Room:      room,
 		Msgs:      msgs,
 		CloseConn: closeConn,
@@ -44,6 +44,18 @@ func (r *Room) ConnectPlayerToRoom(writer http.ResponseWriter, request *http.Req
 	session_id := session.GetSessionID(request)
 
 	/**
+	 * Obtain any existing name for player - maybe they've connected to the room before.
+	 */
+
+	name := util.GenerateRandomTwoPartName()
+	cookie, err := request.Cookie("SN-Player-Name")
+	if err == nil {
+		name = cookie.Value
+	} else {
+		http.SetCookie(writer, r.Cookie("SN-Player-Name", name))
+	}
+
+	/**
 	 * Obtain connection to websocket.
 	 */
 	var connectionMutex sync.Mutex
@@ -57,8 +69,10 @@ func (r *Room) ConnectPlayerToRoom(writer http.ResponseWriter, request *http.Req
 	/**
 	 * Add player to room, establishing a means of closing connection from elsewhere.
 	 */
+
 	player, err := r.addPlayer(
 		session_id,
+		name,
 		func() {
 			connectionMutex.Lock()
 			defer connectionMutex.Unlock()
@@ -107,7 +121,7 @@ func (r *Room) ConnectPlayerToRoom(writer http.ResponseWriter, request *http.Req
 	}
 }
 
-func (r *Room) addPlayer(session_id string, closeConn func()) (*Player, error) {
+func (r *Room) addPlayer(session_id string, name string, closeConn func()) (*Player, error) {
 	r.PlayersMutex.Lock()
 
 	_, exists := r.Players[session_id]
@@ -117,6 +131,7 @@ func (r *Room) addPlayer(session_id string, closeConn func()) (*Player, error) {
 
 	player := NewPlayer(
 		session_id,
+		name,
 		r,
 		make(chan []byte, 16),
 		closeConn,
