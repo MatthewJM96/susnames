@@ -41,7 +41,7 @@ func NewPlayer(session_id string, name string, room *Room, msgs chan []byte, clo
  * Such messages can be queued via a channel stored with the player record.
  */
 func (r *Room) ConnectPlayerToRoom(writer http.ResponseWriter, request *http.Request) {
-	session_id := session.GetSessionID(request)
+	session_id := session.SessionID()
 
 	/**
 	 * Obtain any existing name for player - maybe they've connected to the room before.
@@ -174,7 +174,7 @@ func (r *Room) GetPlayer(session_id string) (*Player, error) {
 }
 
 func (r *Room) SetPlayerName(writer http.ResponseWriter, request *http.Request) {
-	session_id := session.GetSessionID(request)
+	session_id := session.SessionID()
 
 	/**
 	 * Get player to set name of.

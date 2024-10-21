@@ -2,6 +2,7 @@ package session
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/segmentio/ksuid"
 	"github.com/spf13/viper"
@@ -9,13 +10,14 @@ import (
 
 type SessionMiddlewareOpts func(*SessionMiddleware)
 
+var sessionID string = ""
+
 func NewSessionMiddleware(next http.Handler, config *viper.Viper) http.Handler {
-	mw := SessionMiddleware{
+	return SessionMiddleware{
 		Next:     next,
 		Secure:   config.GetBool("secure"),
 		HTTPOnly: config.GetBool("http_only"),
 	}
-	return mw
 }
 
 func WithSecure(secure bool) SessionMiddlewareOpts {
@@ -36,20 +38,36 @@ type SessionMiddleware struct {
 	HTTPOnly bool
 }
 
-func GetSessionID(r *http.Request) string {
-	cookie, err := r.Cookie("SessionID")
-	if err != nil {
-		return ""
-	}
-	return cookie.Value
+func SessionID() string {
+	return sessionID
 }
 
-func (mw SessionMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	id := GetSessionID(r)
-	if id == "" {
-		id = ksuid.New().String()
-		http.SetCookie(w, &http.Cookie{Name: "SessionID", Value: id, Secure: mw.Secure, HttpOnly: mw.HTTPOnly})
+func (mw SessionMiddleware) setSessionID(writer http.ResponseWriter) {
+	http.SetCookie(
+		writer,
+		&http.Cookie{
+			Name:     "SN-SessionID",
+			Value:    sessionID,
+			Secure:   mw.Secure,
+			HttpOnly: mw.HTTPOnly,
+			Expires:  time.Now().Add(30 * 24 * time.Hour),
+			Path:     "/",
+		},
+	)
+}
+
+func (mw SessionMiddleware) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	cookie, err := request.Cookie("SN-SessionID")
+	if err == nil {
+		sessionID = cookie.Value
+
+		if cookie.Expires.Compare(time.Now().Add(5*24*time.Hour)) == -1 {
+			mw.setSessionID(writer)
+		}
+	} else {
+		sessionID = ksuid.New().String()
+		mw.setSessionID(writer)
 	}
 
-	mw.Next.ServeHTTP(w, r)
+	mw.Next.ServeHTTP(writer, request)
 }
