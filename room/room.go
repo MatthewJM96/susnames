@@ -19,6 +19,10 @@ type Room struct {
 
 	Players      map[string]*Player
 	PlayersMutex sync.Mutex
+
+	GameStateMutex sync.Mutex
+	Started        bool
+	Words          [25]string
 }
 
 var rooms map[string]*Room = make(map[string]*Room)
@@ -47,6 +51,7 @@ func CreateRoom(config *viper.Viper, log *slog.Logger) (*Room, error) {
 		Log:     log,
 		Name:    name,
 		Players: make(map[string]*Player),
+		Started: false,
 	}
 
 	rooms[name] = room
@@ -56,6 +61,22 @@ func CreateRoom(config *viper.Viper, log *slog.Logger) (*Room, error) {
 
 func GetRoom(name string) *Room {
 	return rooms[name]
+}
+
+func (r *Room) StartGame(writer http.ResponseWriter, request *http.Request) {
+	r.GameStateMutex.Lock()
+
+	r.Started = true
+	r.Words = [25]string{
+		"relinquish", "genuine", "formula", "gain", "established", "development", "long",
+		"personality", "package", "reveal", "premium", "carve", "authority", "blast",
+		"compromise", "acid", "video", "live", "eject", "redundancy", "announcement",
+		"tear", "depressed", "cunning", "child",
+	}
+
+	r.GameStateMutex.Unlock()
+
+	r.BroadcastGrid(request.Context())
 }
 
 func (r *Room) Cookie(name string, value string) *http.Cookie {

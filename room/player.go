@@ -92,10 +92,15 @@ func (r *Room) ConnectPlayerToRoom(writer http.ResponseWriter, request *http.Req
 	defer r.removePlayer(session_id)
 
 	/**
-	 * Broadcast the existence of a new player in the room.
+	 * Broadcast the existence of a new player in the room, and if a game is ongoing,
+	 * the state of that game.
 	 */
 
 	r.BroadcastPlayerList(request.Context())
+
+	if r.Started {
+		r.BroadcastGameStateToPlayer(request.Context(), player)
+	}
 
 	/**
 	 * Until connection is closed keep publishing messages that we have in queue to

@@ -25,6 +25,7 @@ func main() {
 	router.HandleFunc("POST /room/{name}", handlers.ViewRoom)
 	router.HandleFunc("GET /room/{name}/conn", handlers.ConnectPlayerToRoom)
 	router.HandleFunc("POST /room/{name}/name", handlers.SetPlayerName)
+	router.HandleFunc("POST /room/{name}/start-game", handlers.StartGame)
 
 	session := session.NewSessionMiddleware(router, config)
 

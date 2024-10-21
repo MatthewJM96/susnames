@@ -1,14 +1,30 @@
 package components
 
-templ Room(room_name string, grid templ.Component) {
+templ EmptyGameControl() {
+	<div id="game-control"></div>
+}
+
+templ GameControl(room_name string) {
+	<div id="game-control">
+		<form id="start-game" hx-post={ "/room/"+room_name+"/start-game" } hx-swap="delete">
+			<button>Start game</button>
+		</form>
+	</div>
+}
+
+templ Room(room_name string) {
 	<div id="room" hx-ext="ws" ws-connect={ "/room/"+room_name+"/conn" }>
 		<div id="player-list"></div>
 		<form id="player-name-changer" hx-post={ "/room/"+room_name+"/name" } hx-swap="none">
 			<button>Change name:</button> <input type="text" name="name" placeholder="name">
 		</form>
 
+		@GameControl(room_name)
+
 		<br><br>
 
-		@grid
+		<div id="game-arena">
+			<div id="grid"></div>
+		</div>
 	</div>
 }

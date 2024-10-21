@@ -25,6 +25,14 @@ func (r *Room) BroadcastMessage(message []byte, exclude *Player) {
 	}
 }
 
+func (r *Room) BroadcastMessageToPlayer(message []byte, player *Player) {
+	select {
+	case player.Msgs <- message:
+	default:
+		go player.CloseConn()
+	}
+}
+
 func (r *Room) BroadcastPlayerInfo(ctx context.Context, player *Player) {
 	buf := new(bytes.Buffer)
 	components.PlayerNameTag(player.SessionID, player.Name).Render(ctx, buf)
@@ -43,4 +51,31 @@ func (r *Room) BroadcastPlayerList(ctx context.Context) {
 	components.PlayerList(tags).Render(ctx, buf)
 
 	r.BroadcastMessage(buf.Bytes(), nil)
+}
+
+func (r *Room) BroadcastGrid(ctx context.Context) {
+	r.GameStateMutex.Lock()
+	defer r.GameStateMutex.Unlock()
+
+	buf := new(bytes.Buffer)
+
+	components.Grid(r.Words).Render(ctx, buf)
+
+	r.BroadcastMessage(buf.Bytes(), nil)
+}
+
+func (r *Room) BroadcastGameStateToPlayer(ctx context.Context, player *Player) {
+	r.GameStateMutex.Lock()
+	defer r.GameStateMutex.Unlock()
+
+	if !r.Started {
+		return
+	}
+
+	buf := new(bytes.Buffer)
+
+	components.Grid(r.Words).Render(ctx, buf)
+	components.EmptyGameControl().Render(ctx, buf)
+
+	r.BroadcastMessageToPlayer(buf.Bytes(), player)
 }
