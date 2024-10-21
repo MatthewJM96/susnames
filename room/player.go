@@ -58,6 +58,7 @@ func (r *Room) ConnectPlayerToRoom(writer http.ResponseWriter, request *http.Req
 	/**
 	 * Obtain connection to websocket.
 	 */
+
 	var connectionMutex sync.Mutex
 	connection, err := websocket.Accept(writer, request, nil)
 	if err != nil {
@@ -93,6 +94,7 @@ func (r *Room) ConnectPlayerToRoom(writer http.ResponseWriter, request *http.Req
 	/**
 	 * Broadcast the existence of a new player in the room.
 	 */
+
 	r.BroadcastPlayerList(request.Context())
 
 	/**
@@ -102,6 +104,7 @@ func (r *Room) ConnectPlayerToRoom(writer http.ResponseWriter, request *http.Req
 	 * TODO(Matthew): do we want to do something to not have  this spin so fast during
 	 *				  inactivity?
 	 */
+
 	loop_ctx := connection.CloseRead(context.Background())
 	for {
 		select {
@@ -179,6 +182,7 @@ func (r *Room) SetPlayerName(writer http.ResponseWriter, request *http.Request) 
 	/**
 	 * Get player to set name of.
 	 */
+
 	player, err := r.GetPlayer(session_id)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
@@ -188,6 +192,7 @@ func (r *Room) SetPlayerName(writer http.ResponseWriter, request *http.Request) 
 	/**
 	 * Get name to set player to, generating one if we didn't get given one.
 	 */
+
 	request.ParseForm()
 
 	name := ""
