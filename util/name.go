@@ -2,14 +2,10 @@ package util
 
 import (
 	"fmt"
-	"math/rand"
 	"strings"
-	"time"
 )
 
 var (
-	rnd *rand.Rand = rand.New(rand.NewSource(42))
-
 	OPINION_ADJECTIVES = []string{
 		"adorable", "adventurous", "aggressive", "agreeable", "alert", "alive", "amused", "angry", "annoyed", "annoying", "anxious",
 		"arrogant", "ashamed", "attractive", "average", "awful", "bad", "beautiful", "better", "bewildered", "black", "bloody", "blue",
@@ -125,25 +121,21 @@ var (
 	}
 )
 
-func refreshSeed() {
-	rnd.Seed(time.Now().UTC().UnixNano())
-}
-
 func GenerateRandomTwoPartName() string {
-	refreshSeed()
+	RefreshRandSeed()
 
-	opinion := OPINION_ADJECTIVES[rnd.Intn(len(OPINION_ADJECTIVES))]
-	noun := NOUNS[rnd.Intn(len(NOUNS))]
+	opinion := OPINION_ADJECTIVES[Rnd.Intn(len(OPINION_ADJECTIVES))]
+	noun := NOUNS[Rnd.Intn(len(NOUNS))]
 
 	return strings.ToLower(fmt.Sprintf("%s-%s", opinion, noun))
 }
 
 func GenerateRandomThreePartName() string {
-	refreshSeed()
+	RefreshRandSeed()
 
-	opinion := OPINION_ADJECTIVES[rnd.Intn(len(OPINION_ADJECTIVES))]
-	colour := COLOUR_ADJECTIVES[rnd.Intn(len(COLOUR_ADJECTIVES))]
-	noun := NOUNS[rnd.Intn(len(NOUNS))]
+	opinion := OPINION_ADJECTIVES[Rnd.Intn(len(OPINION_ADJECTIVES))]
+	colour := COLOUR_ADJECTIVES[Rnd.Intn(len(COLOUR_ADJECTIVES))]
+	noun := NOUNS[Rnd.Intn(len(NOUNS))]
 
 	return strings.ToLower(fmt.Sprintf("%s-%s-%s", opinion, colour, noun))
 }

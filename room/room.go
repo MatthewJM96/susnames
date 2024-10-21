@@ -3,6 +3,7 @@ package room
 import (
 	"fmt"
 	"log/slog"
+	"math"
 	"net/http"
 	"sync"
 	"time"
@@ -22,6 +23,7 @@ type Room struct {
 
 	GameStateMutex sync.Mutex
 	Started        bool
+	Counterspies   int
 	Words          [25]string
 }
 
@@ -47,11 +49,12 @@ func CreateRoom(config *viper.Viper, log *slog.Logger) (*Room, error) {
 	log.Info(fmt.Sprintf("created room: %s", name))
 
 	room := &Room{
-		Config:  config,
-		Log:     log,
-		Name:    name,
-		Players: make(map[string]*Player),
-		Started: false,
+		Config:       config,
+		Log:          log,
+		Name:         name,
+		Players:      make(map[string]*Player),
+		Started:      false,
+		Counterspies: -1,
 	}
 
 	rooms[name] = room
@@ -61,6 +64,78 @@ func CreateRoom(config *viper.Viper, log *slog.Logger) (*Room, error) {
 
 func GetRoom(name string) *Room {
 	return rooms[name]
+}
+
+func (r *Room) assignRoles() {
+	r.PlayersMutex.Lock()
+
+	/**
+	 * Look for spymaster, and count number of players who will be playing.
+	 */
+
+	foundSpymaster := false
+	spies := 0
+	for _, player := range r.Players {
+		if player.Role == SPYMASTER {
+			foundSpymaster = true
+		} else if player.Role == SPY {
+			spies += 1
+		}
+	}
+
+	/**
+	 * Assign a default number of counterspies if none has been set.
+	 */
+
+	if r.Counterspies == -1 {
+		r.Counterspies = int(math.Floor(float64(spies-1) / 2.0))
+	}
+
+	util.RefreshRandSeed()
+
+	/**
+	 * Assign spymaster if no player has claimed the role.
+	 */
+
+	if !foundSpymaster {
+		idx := util.Rnd.Intn(spies)
+		for _, player := range r.Players {
+			if player.Role != SPY {
+				continue
+			}
+
+			if idx == 0 {
+				player.Role = SPYMASTER
+				break
+			}
+
+			idx -= 1
+		}
+		spies -= 1
+	}
+
+	/**
+	 * Assign counterspies.
+	 */
+
+	for range r.Counterspies {
+		idx := util.Rnd.Intn(spies)
+		for _, player := range r.Players {
+			if player.Role != SPY {
+				continue
+			}
+
+			if idx == 0 {
+				player.Role = COUNTERSPY
+				break
+			}
+
+			idx -= 1
+		}
+		spies -= 1
+	}
+
+	r.PlayersMutex.Unlock()
 }
 
 func (r *Room) StartGame(writer http.ResponseWriter, request *http.Request) {
@@ -74,9 +149,11 @@ func (r *Room) StartGame(writer http.ResponseWriter, request *http.Request) {
 		"tear", "depressed", "cunning", "child",
 	}
 
+	r.assignRoles()
+
 	r.GameStateMutex.Unlock()
 
-	r.BroadcastGrid(request.Context())
+	r.BroadcastGameState(request.Context())
 }
 
 func (r *Room) Cookie(name string, value string) *http.Cookie {

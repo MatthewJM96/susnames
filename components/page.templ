@@ -67,13 +67,26 @@ templ Page(components ...templ.Component) {
             }
 
             #player-list {
-                display:inline-block;
+                display: inline-block;
                 margin-left: 1.5rem;
 
                 padding: 0.8rem 1.2rem;
 
                 background-color: coral;
                 border-radius: 5px;
+            }
+
+            .name-tag.spectator {
+                color: aquamarine;
+            }
+            .name-tag.spymaster {
+                color: darkred;
+            }
+            .name-tag.spy {
+                color: crimson;
+            }
+            .name-tag.counterspy {
+                color: chartreuse;
             }
 
             #player-name-changer {

@@ -8,12 +8,14 @@ import (
 	"github.com/a-h/templ"
 )
 
-func (r *Room) BroadcastMessage(message []byte, exclude *Player) {
+func (r *Room) BroadcastMessage(messageFunc func(*Player) ([]byte, bool)) {
 	r.PlayersMutex.Lock()
 	defer r.PlayersMutex.Unlock()
 
 	for _, player := range r.Players {
-		if player == exclude {
+		message, skip := messageFunc(player)
+
+		if skip {
 			continue
 		}
 
@@ -33,35 +35,49 @@ func (r *Room) BroadcastMessageToPlayer(message []byte, player *Player) {
 	}
 }
 
-func (r *Room) BroadcastPlayerInfo(ctx context.Context, player *Player) {
-	buf := new(bytes.Buffer)
-	components.PlayerNameTag(player.SessionID, player.Name).Render(ctx, buf)
-
-	r.BroadcastMessage(buf.Bytes(), player)
-}
-
 func (r *Room) BroadcastPlayerList(ctx context.Context) {
-	buf := new(bytes.Buffer)
+	r.BroadcastMessage(
+		func(player *Player) ([]byte, bool) {
+			buf := new(bytes.Buffer)
 
-	tags := make([]templ.Component, 0, len(r.Players))
-	for sessionID, player := range r.Players {
-		tags = append(tags, components.PlayerNameTag(sessionID, player.Name))
-	}
+			tags := make([]templ.Component, 0, len(r.Players))
 
-	components.PlayerList(tags).Render(ctx, buf)
+			tags = append(tags, components.PlayerNameTag(player.Name, getPlayerRoleClass(player.Role)))
 
-	r.BroadcastMessage(buf.Bytes(), nil)
+			for _, targetPlayer := range r.Players {
+				if player == targetPlayer {
+					continue
+				}
+
+				tags = append(tags, components.PlayerNameTag(targetPlayer.Name, getPublicPlayerRoleClass(targetPlayer.Role)))
+			}
+
+			components.PlayerList(tags).Render(ctx, buf)
+
+			return buf.Bytes(), false
+		},
+	)
 }
 
-func (r *Room) BroadcastGrid(ctx context.Context) {
+func (r *Room) unsafeBroadcastGrid(ctx context.Context) {
+	r.BroadcastMessage(
+		func(player *Player) ([]byte, bool) {
+			buf := new(bytes.Buffer)
+
+			components.Grid(r.Words).Render(ctx, buf)
+
+			return buf.Bytes(), false
+		},
+	)
+}
+
+func (r *Room) BroadcastGameState(ctx context.Context) {
 	r.GameStateMutex.Lock()
 	defer r.GameStateMutex.Unlock()
 
-	buf := new(bytes.Buffer)
+	r.unsafeBroadcastGrid(ctx)
 
-	components.Grid(r.Words).Render(ctx, buf)
-
-	r.BroadcastMessage(buf.Bytes(), nil)
+	r.BroadcastPlayerList(ctx)
 }
 
 func (r *Room) BroadcastGameStateToPlayer(ctx context.Context, player *Player) {

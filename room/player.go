@@ -12,10 +12,47 @@ import (
 	"github.com/coder/websocket"
 )
 
+type PlayerRole uint
+
+const (
+	SPECTATOR PlayerRole = iota
+	SPYMASTER
+	SPY
+	COUNTERSPY
+)
+
+func getPlayerRoleClass(role PlayerRole) string {
+	if role == SPECTATOR {
+		return "spectator"
+	} else if role == SPYMASTER {
+		return "spymaster"
+	} else if role == SPY {
+		return "spy"
+	} else if role == COUNTERSPY {
+		return "counterspy"
+	}
+	return ""
+}
+
+func getPublicPlayerRoleClass(role PlayerRole) string {
+	if role == SPECTATOR {
+		return "spectator"
+	} else if role == SPYMASTER {
+		return "spymaster"
+	} else if role == SPY {
+		return "spy"
+	} else if role == COUNTERSPY {
+		return "spy"
+	}
+	return ""
+}
+
 type Player struct {
 	SessionID string
 	Name      string
 	Room      *Room
+
+	Role PlayerRole
 
 	Msgs      chan []byte
 	CloseConn func()
@@ -30,6 +67,7 @@ func NewPlayer(session_id string, name string, room *Room, msgs chan []byte, clo
 		SessionID: session_id,
 		Name:      name,
 		Room:      room,
+		Role:      SPY,
 		Msgs:      msgs,
 		CloseConn: closeConn,
 	}
@@ -106,7 +144,7 @@ func (r *Room) ConnectPlayerToRoom(writer http.ResponseWriter, request *http.Req
 	 * Until connection is closed keep publishing messages that we have in queue to
 	 * player.
 	 *
-	 * TODO(Matthew): do we want to do something to not have  this spin so fast during
+	 * TODO(Matthew): do we want to do something to not have this spin so fast during
 	 *				  inactivity?
 	 */
 

@@ -1,7 +1,7 @@
 package components
 
-templ PlayerNameTag(session_id string, name string) {
-	<li id={ "name-tag-" + session_id } class="name-tag">{ name }</li>
+templ PlayerNameTag(name string, role string) {
+	<li class={ "name-tag " + role }>{ name }</li>
 }
 
 templ PlayerList(tags []templ.Component) {
