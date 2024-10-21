@@ -212,7 +212,8 @@ func (r *Room) SetPlayerName(writer http.ResponseWriter, request *http.Request) 
 	/**
 	 * Set player name and broadcast the change.
 	 */
-	http.SetCookie(writer, &http.Cookie{Name: "name", Value: name, Secure: r.Config.GetBool("secure"), HttpOnly: r.Config.GetBool("http_only")})
+
+	http.SetCookie(writer, r.Cookie("SN-Player-Name", name))
 
 	player.Name = name
 

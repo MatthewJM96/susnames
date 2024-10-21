@@ -3,7 +3,9 @@ package room
 import (
 	"fmt"
 	"log/slog"
+	"net/http"
 	"sync"
+	"time"
 
 	"github.com/MatthewJM96/susnames/util"
 	"github.com/spf13/viper"
@@ -54,4 +56,17 @@ func CreateRoom(config *viper.Viper, log *slog.Logger) (*Room, error) {
 
 func GetRoom(name string) *Room {
 	return rooms[name]
+}
+
+func (r *Room) Cookie(name string, value string) *http.Cookie {
+	// Set cookies regarding a room to expire after 36 hours, that would be a long game
+	// of susnames...
+	return &http.Cookie{
+		Name:     name,
+		Value:    value,
+		Secure:   r.Config.GetBool("secure"),
+		HttpOnly: r.Config.GetBool("http_only"),
+		Expires:  time.Now().Add(36 * time.Hour),
+		Path:     "/room/" + r.Name,
+	}
 }
