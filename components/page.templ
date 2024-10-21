@@ -28,16 +28,62 @@ templ Page(components ...templ.Component) {
             })
         </script>
         <style>
-            header {
-                margin-left: 1rem;
+            body {
+                background-color: whitesmoke;
 
                 font-family: cursive;
+            }
+
+            input, button {
+                font-family: cursive;
+                font-size: 1.2em;
+
+                background-color: palevioletred;
+                border-color: mediumvioletred;
+            }
+
+            input:hover, button:hover {
+                background-color: mediumvioletred;
+            }
+
+            header {
+                margin-left: 1rem;
                 font-size: 3rem;
                 font-weight: bold;
             }
 
+            #contents {
+                margin-top: 1em;
+            }
+
+            #create-room {
+                display: inline-block;
+                margin: 0 0.75em;
+            }
+
+            #join-room {
+                display: inline-block;
+                margin-left: 1em;
+            }
+
             #player-list {
-                margin: 1.5rem 0;
+                display:inline-block;
+                margin-left: 1.5rem;
+
+                padding: 0.8rem 1.2rem;
+
+                background-color: coral;
+                border-radius: 5px;
+            }
+
+            #player-name-changer {
+                margin-right: 2.5rem;
+                float: right;
+
+                padding: 0.8rem;
+
+                background-color: coral;
+                border-radius: 5px;
             }
 
             #grid {
@@ -53,11 +99,11 @@ templ Page(components ...templ.Component) {
             .card {
                 display: inline-block;
 
-                height: 3.6em;
+                height: 4em;
                 aspect-ratio: 16 / 9;
                 width: auto;
 
-                font-size: 2rem;
+                font-size: 1.75rem;
 
                 line-height: 3.6em;
                 text-align: center;
