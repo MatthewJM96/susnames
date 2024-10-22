@@ -32,7 +32,13 @@ type command struct {
 	Data string `json:"data"`
 }
 
-func newConnectionManager(config *viper.Viper, log *slog.Logger, connection *websocket.Conn, room *Room, player *Player) *connectionManager {
+func newConnectionManager(
+	config *viper.Viper,
+	log *slog.Logger,
+	connection *websocket.Conn,
+	room *Room,
+	player *Player,
+) *connectionManager {
 	return &connectionManager{
 		config,
 		log,
