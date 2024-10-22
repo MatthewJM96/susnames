@@ -20,7 +20,7 @@ func (h *Handler) CreateRoom(writer http.ResponseWriter, request *http.Request) 
 	components.Room(room.Name).Render(request.Context(), writer)
 }
 
-func (h *Handler) ViewRoom(writer http.ResponseWriter, request *http.Request) {
+func (h *Handler) JoinRoom(writer http.ResponseWriter, request *http.Request) {
 	roomName := request.PathValue("name")
 
 	room := room.GetRoom(roomName)
@@ -51,16 +51,4 @@ func (h *Handler) ConnectPlayerToRoom(writer http.ResponseWriter, request *http.
 	}
 
 	room.ConnectPlayerToRoom(writer, request)
-}
-
-func (h *Handler) StartGame(writer http.ResponseWriter, request *http.Request) {
-	roomName := request.PathValue("name")
-
-	room := room.GetRoom(roomName)
-	if room == nil {
-		http.Error(writer, fmt.Sprintf("no room exists with name: %s", roomName), http.StatusBadRequest)
-		return
-	}
-
-	room.StartGame(writer, request)
 }

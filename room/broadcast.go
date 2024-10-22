@@ -8,7 +8,7 @@ import (
 	"github.com/a-h/templ"
 )
 
-func (r *Room) BroadcastMessage(messageFunc func(*Player) ([]byte, bool)) {
+func (r *Room) broadcastMessage(messageFunc func(*Player) ([]byte, bool)) {
 	r.PlayersMutex.Lock()
 	defer r.PlayersMutex.Unlock()
 
@@ -27,7 +27,7 @@ func (r *Room) BroadcastMessage(messageFunc func(*Player) ([]byte, bool)) {
 	}
 }
 
-func (r *Room) BroadcastMessageToPlayer(message []byte, player *Player) {
+func (r *Room) broadcastMessageToPlayer(message []byte, player *Player) {
 	select {
 	case player.Msgs <- message:
 	default:
@@ -35,8 +35,8 @@ func (r *Room) BroadcastMessageToPlayer(message []byte, player *Player) {
 	}
 }
 
-func (r *Room) BroadcastPlayerList(ctx context.Context) {
-	r.BroadcastMessage(
+func (r *Room) broadcastPlayerList(ctx context.Context) {
+	r.broadcastMessage(
 		func(player *Player) ([]byte, bool) {
 			buf := new(bytes.Buffer)
 
@@ -59,8 +59,8 @@ func (r *Room) BroadcastPlayerList(ctx context.Context) {
 	)
 }
 
-func (r *Room) unsafeBroadcastGrid(ctx context.Context) {
-	r.BroadcastMessage(
+func (r *Room) unsafebroadcastGrid(ctx context.Context) {
+	r.broadcastMessage(
 		func(player *Player) ([]byte, bool) {
 			buf := new(bytes.Buffer)
 
@@ -71,16 +71,16 @@ func (r *Room) unsafeBroadcastGrid(ctx context.Context) {
 	)
 }
 
-func (r *Room) BroadcastGameState(ctx context.Context) {
+func (r *Room) broadcastGameState(ctx context.Context) {
 	r.GameStateMutex.Lock()
 	defer r.GameStateMutex.Unlock()
 
-	r.unsafeBroadcastGrid(ctx)
+	r.unsafebroadcastGrid(ctx)
 
-	r.BroadcastPlayerList(ctx)
+	r.broadcastPlayerList(ctx)
 }
 
-func (r *Room) BroadcastGameStateToPlayer(ctx context.Context, player *Player) {
+func (r *Room) broadcastGameStateToPlayer(ctx context.Context, player *Player) {
 	r.GameStateMutex.Lock()
 	defer r.GameStateMutex.Unlock()
 
@@ -93,5 +93,5 @@ func (r *Room) BroadcastGameStateToPlayer(ctx context.Context, player *Player) {
 	components.Grid(r.Words).Render(ctx, buf)
 	components.EmptyGameControl().Render(ctx, buf)
 
-	r.BroadcastMessageToPlayer(buf.Bytes(), player)
+	r.broadcastMessageToPlayer(buf.Bytes(), player)
 }

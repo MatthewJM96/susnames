@@ -55,11 +55,11 @@ type Player struct {
 	CloseConn func()
 }
 
-func GeneratePlayerName() string {
+func generatePlayerName() string {
 	return util.GenerateRandomTwoPartName()
 }
 
-func NewPlayer(sessionID string, name string, room *Room) *Player {
+func newPlayer(sessionID string, name string, room *Room) *Player {
 	return &Player{
 		SessionID: sessionID,
 		Name:      name,
@@ -86,7 +86,7 @@ func (r *Room) ConnectPlayerToRoom(writer http.ResponseWriter, request *http.Req
 	if err == nil {
 		name = cookie.Value
 	} else {
-		http.SetCookie(writer, r.Cookie("SN-Player-Name", name))
+		http.SetCookie(writer, r.cookie("SN-Player-Name", name))
 	}
 
 	/**
@@ -120,14 +120,14 @@ func (r *Room) ConnectPlayerToRoom(writer http.ResponseWriter, request *http.Req
 	go connManager.writePump()
 
 	/**
-	 * Broadcast the existence of a new player in the room, and if a game is ongoing,
+	 * broadcast the existence of a new player in the room, and if a game is ongoing,
 	 * the state of that game.
 	 */
 
-	r.BroadcastPlayerList(request.Context())
+	r.broadcastPlayerList(request.Context())
 
 	if r.Started {
-		r.BroadcastGameStateToPlayer(request.Context(), player)
+		r.broadcastGameStateToPlayer(request.Context(), player)
 	}
 }
 
@@ -139,7 +139,7 @@ func (r *Room) addPlayer(sessionID string, name string) (*Player, error) {
 		return nil, fmt.Errorf("player already exists with session ID: %s", sessionID)
 	}
 
-	player := NewPlayer(sessionID, name, r)
+	player := newPlayer(sessionID, name, r)
 	r.Players[sessionID] = player
 
 	r.Log.Info(fmt.Sprintf("added player: (%s, %s) to room %s", sessionID, player.Name, r.Name))
@@ -163,12 +163,12 @@ func (r *Room) removePlayer(sessionID string) error {
 
 	r.PlayersMutex.Unlock()
 
-	r.BroadcastPlayerList(context.Background())
+	r.broadcastPlayerList(context.Background())
 
 	return nil
 }
 
-func (r *Room) GetPlayer(sessionID string) (*Player, error) {
+func (r *Room) getPlayer(sessionID string) (*Player, error) {
 	player, exists := r.Players[sessionID]
 	if !exists || player == nil {
 		return nil, fmt.Errorf("no player exists with session ID: %s", sessionID)
@@ -177,14 +177,14 @@ func (r *Room) GetPlayer(sessionID string) (*Player, error) {
 	return player, nil
 }
 
-func (r *Room) SetPlayerName(name string) {
+func (r *Room) setPlayerName(name string) {
 	sessionID := session.SessionID()
 
 	/**
 	 * Get player to set name of.
 	 */
 
-	player, err := r.GetPlayer(sessionID)
+	player, err := r.getPlayer(sessionID)
 	if err != nil {
 		r.Log.Error(err.Error())
 		return
@@ -196,7 +196,7 @@ func (r *Room) SetPlayerName(name string) {
 	 */
 
 	if name == "" {
-		name = GeneratePlayerName()
+		name = generatePlayerName()
 	}
 	if player.Name == name {
 		return
@@ -210,5 +210,5 @@ func (r *Room) SetPlayerName(name string) {
 
 	player.Name = name
 
-	r.BroadcastPlayerList(context.Background())
+	r.broadcastPlayerList(context.Background())
 }

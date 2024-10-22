@@ -6,7 +6,7 @@ templ EmptyGameControl() {
 
 templ GameControl(room_name string) {
 	<div id="game-control">
-		<form id="start-game" hx-post={ "/room/"+room_name+"/start-game" } hx-swap="delete">
+		<form id="start-game" ws-send hx-vals='{"cmd": "start-game"}'>
 			<button>Start game</button>
 		</form>
 	</div>

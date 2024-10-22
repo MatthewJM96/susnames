@@ -69,7 +69,7 @@ func (c *connectionManager) readPump() {
 			break
 		}
 
-		c.Room.ProcessCommand(comm, c)
+		c.Room.processCommand(comm, c)
 	}
 }
 

@@ -1,6 +1,7 @@
 package room
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"math"
@@ -29,7 +30,7 @@ type Room struct {
 
 var rooms map[string]*Room = make(map[string]*Room)
 
-func GenerateRoomName() string {
+func generateRoomName() string {
 	return util.GenerateRandomThreePartName()
 }
 
@@ -38,7 +39,7 @@ func CreateRoom(config *viper.Viper, log *slog.Logger) (*Room, error) {
 
 	exists := true
 	for range 5 {
-		name = GenerateRoomName()
+		name = generateRoomName()
 
 		_, exists = rooms[name]
 	}
@@ -138,7 +139,7 @@ func (r *Room) assignRoles() {
 	r.PlayersMutex.Unlock()
 }
 
-func (r *Room) StartGame(writer http.ResponseWriter, request *http.Request) {
+func (r *Room) startGame() {
 	r.GameStateMutex.Lock()
 
 	r.Started = true
@@ -153,10 +154,10 @@ func (r *Room) StartGame(writer http.ResponseWriter, request *http.Request) {
 
 	r.GameStateMutex.Unlock()
 
-	r.BroadcastGameState(request.Context())
+	r.broadcastGameState(context.Background())
 }
 
-func (r *Room) Cookie(name string, value string) *http.Cookie {
+func (r *Room) cookie(name string, value string) *http.Cookie {
 	// Set cookies regarding a room to expire after 36 hours, that would be a long game
 	// of susnames...
 	return &http.Cookie{
@@ -169,10 +170,12 @@ func (r *Room) Cookie(name string, value string) *http.Cookie {
 	}
 }
 
-func (r *Room) ProcessCommand(comm *command, conn *connectionManager) {
+func (r *Room) processCommand(comm *command, _ *connectionManager) {
 	switch comm.Cmd {
+	case "start-game":
+		r.startGame()
 	case "change-name":
-		r.SetPlayerName(comm.Data)
+		r.setPlayerName(comm.Data)
 	default:
 		r.Log.Error(fmt.Sprintf("unrecognised command: %s", comm.Cmd))
 	}
