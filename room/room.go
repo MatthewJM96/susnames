@@ -168,3 +168,12 @@ func (r *Room) Cookie(name string, value string) *http.Cookie {
 		Path:     "/room/" + r.Name,
 	}
 }
+
+func (r *Room) ProcessCommand(comm *command, conn *connectionManager) {
+	switch comm.Cmd {
+	case "change-name":
+		r.SetPlayerName(comm.Data)
+	default:
+		r.Log.Error(fmt.Sprintf("unrecognised command: %s", comm.Cmd))
+	}
+}

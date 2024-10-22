@@ -53,18 +53,6 @@ func (h *Handler) ConnectPlayerToRoom(writer http.ResponseWriter, request *http.
 	room.ConnectPlayerToRoom(writer, request)
 }
 
-func (h *Handler) SetPlayerName(writer http.ResponseWriter, request *http.Request) {
-	roomName := request.PathValue("name")
-
-	room := room.GetRoom(roomName)
-	if room == nil {
-		http.Error(writer, fmt.Sprintf("no room exists with name: %s", roomName), http.StatusBadRequest)
-		return
-	}
-
-	room.SetPlayerName(writer, request)
-}
-
 func (h *Handler) StartGame(writer http.ResponseWriter, request *http.Request) {
 	roomName := request.PathValue("name")
 

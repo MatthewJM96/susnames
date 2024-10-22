@@ -4,12 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"sync"
-	"time"
 
 	"github.com/MatthewJM96/susnames/session"
 	"github.com/MatthewJM96/susnames/util"
-	"github.com/coder/websocket"
 )
 
 type PlayerRole uint
@@ -62,14 +59,13 @@ func GeneratePlayerName() string {
 	return util.GenerateRandomTwoPartName()
 }
 
-func NewPlayer(session_id string, name string, room *Room, msgs chan []byte, closeConn func()) *Player {
+func NewPlayer(sessionID string, name string, room *Room) *Player {
 	return &Player{
-		SessionID: session_id,
+		SessionID: sessionID,
 		Name:      name,
 		Room:      room,
 		Role:      SPY,
-		Msgs:      msgs,
-		CloseConn: closeConn,
+		Msgs:      make(chan []byte, 16),
 	}
 }
 
@@ -79,7 +75,7 @@ func NewPlayer(session_id string, name string, room *Room, msgs chan []byte, clo
  * Such messages can be queued via a channel stored with the player record.
  */
 func (r *Room) ConnectPlayerToRoom(writer http.ResponseWriter, request *http.Request) {
-	session_id := session.SessionID()
+	sessionID := session.SessionID()
 
 	/**
 	 * Obtain any existing name for player - maybe they've connected to the room before.
@@ -94,40 +90,34 @@ func (r *Room) ConnectPlayerToRoom(writer http.ResponseWriter, request *http.Req
 	}
 
 	/**
+	 * Add player to room.
+	 */
+
+	player, err := r.addPlayer(sessionID, name)
+	if err != nil {
+		r.Log.Error(err.Error())
+		return
+	}
+
+	/**
 	 * Obtain connection to websocket.
 	 */
 
-	var connectionMutex sync.Mutex
-	connection, err := websocket.Accept(writer, request, nil)
+	connection, err := upgrader.Upgrade(writer, request, nil)
 	if err != nil {
 		r.Log.Error(err.Error())
 		return
 	}
-	defer connection.CloseNow()
+
+	r.Log.Info(fmt.Sprintf("websocket connection established with player (%s, %s)", sessionID, name))
 
 	/**
-	 * Add player to room, establishing a means of closing connection from elsewhere.
+	 * Set up read/write pumps to run until connection is closed.
 	 */
 
-	player, err := r.addPlayer(
-		session_id,
-		name,
-		func() {
-			connectionMutex.Lock()
-			defer connectionMutex.Unlock()
-			if connection != nil {
-				connection.Close(
-					websocket.StatusPolicyViolation,
-					"connection too slow to keep up with messages",
-				)
-			}
-		},
-	)
-	if err != nil {
-		r.Log.Error(err.Error())
-		return
-	}
-	defer r.removePlayer(session_id)
+	connManager := newConnectionManager(r.Config, r.Log, connection, r, player)
+	go connManager.readPump()
+	go connManager.writePump()
 
 	/**
 	 * Broadcast the existence of a new player in the room, and if a game is ongoing,
@@ -139,69 +129,37 @@ func (r *Room) ConnectPlayerToRoom(writer http.ResponseWriter, request *http.Req
 	if r.Started {
 		r.BroadcastGameStateToPlayer(request.Context(), player)
 	}
-
-	/**
-	 * Until connection is closed keep publishing messages that we have in queue to
-	 * player.
-	 *
-	 * TODO(Matthew): do we want to do something to not have this spin so fast during
-	 *				  inactivity?
-	 */
-
-	loop_ctx := connection.CloseRead(context.Background())
-	for {
-		select {
-		case msg := <-player.Msgs:
-			write_ctx, cancel := context.WithTimeout(loop_ctx, 5*time.Second)
-			defer cancel()
-
-			err = connection.Write(write_ctx, websocket.MessageText, msg)
-			if err != nil {
-				r.Log.Error(err.Error())
-				return
-			}
-		case <-loop_ctx.Done():
-			r.Log.Info(loop_ctx.Err().Error())
-			return
-		}
-	}
 }
 
-func (r *Room) addPlayer(session_id string, name string, closeConn func()) (*Player, error) {
+func (r *Room) addPlayer(sessionID string, name string) (*Player, error) {
 	r.PlayersMutex.Lock()
 
-	_, exists := r.Players[session_id]
+	_, exists := r.Players[sessionID]
 	if exists {
-		return nil, fmt.Errorf("player already exists with session ID: %s", session_id)
+		return nil, fmt.Errorf("player already exists with session ID: %s", sessionID)
 	}
 
-	player := NewPlayer(
-		session_id,
-		name,
-		r,
-		make(chan []byte, 16),
-		closeConn,
-	)
-	r.Players[session_id] = player
+	player := NewPlayer(sessionID, name, r)
+	r.Players[sessionID] = player
 
-	r.Log.Info(fmt.Sprintf("added player: (%s, %s) to room %s", session_id, player.Name, r.Name))
+	r.Log.Info(fmt.Sprintf("added player: (%s, %s) to room %s", sessionID, player.Name, r.Name))
 
 	r.PlayersMutex.Unlock()
 
 	return player, nil
 }
 
-func (r *Room) removePlayer(session_id string) error {
+func (r *Room) removePlayer(sessionID string) error {
 	r.PlayersMutex.Lock()
 
-	player, exists := r.Players[session_id]
+	player, exists := r.Players[sessionID]
 	if !exists {
-		return fmt.Errorf("player with session ID does not exist to remove from room: %s", session_id)
+		return fmt.Errorf("player with session ID does not exist to remove from room: %s", sessionID)
 	}
 
-	r.Log.Info(fmt.Sprintf("removed player: (%s, %s) from room %s", session_id, player.Name, r.Name))
+	r.Log.Info(fmt.Sprintf("removed player: (%s, %s) from room %s", sessionID, player.Name, r.Name))
 
-	delete(r.Players, session_id)
+	delete(r.Players, sessionID)
 
 	r.PlayersMutex.Unlock()
 
@@ -210,55 +168,47 @@ func (r *Room) removePlayer(session_id string) error {
 	return nil
 }
 
-func (r *Room) GetPlayer(session_id string) (*Player, error) {
-	player, exists := r.Players[session_id]
+func (r *Room) GetPlayer(sessionID string) (*Player, error) {
+	player, exists := r.Players[sessionID]
 	if !exists || player == nil {
-		return nil, fmt.Errorf("no player exists with session ID: %s", session_id)
+		return nil, fmt.Errorf("no player exists with session ID: %s", sessionID)
 	}
 
 	return player, nil
 }
 
-func (r *Room) SetPlayerName(writer http.ResponseWriter, request *http.Request) {
-	session_id := session.SessionID()
+func (r *Room) SetPlayerName(name string) {
+	sessionID := session.SessionID()
 
 	/**
 	 * Get player to set name of.
 	 */
 
-	player, err := r.GetPlayer(session_id)
+	player, err := r.GetPlayer(sessionID)
 	if err != nil {
-		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		r.Log.Error(err.Error())
 		return
 	}
 
 	/**
-	 * Get name to set player to, generating one if we didn't get given one.
+	 * Generare a player name if we weren't given one. If in any case the name is not
+	 * to change, leave early.
 	 */
 
-	request.ParseForm()
-
-	name := ""
-	if request.Form.Has("name") {
-		name = request.FormValue("name")
-	}
 	if name == "" {
 		name = GeneratePlayerName()
 	}
-
 	if player.Name == name {
 		return
 	}
 
-	r.Log.Info(fmt.Sprintf("set player name: (%s, %s) to %s", session_id, player.Name, name))
+	r.Log.Info(fmt.Sprintf("set player name: (%s, %s) to %s", sessionID, player.Name, name))
 
 	/**
 	 * Set player name and broadcast the change.
 	 */
 
-	http.SetCookie(writer, r.Cookie("SN-Player-Name", name))
-
 	player.Name = name
 
-	r.BroadcastPlayerList(request.Context())
+	r.BroadcastPlayerList(context.Background())
 }
