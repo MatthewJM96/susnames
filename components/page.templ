@@ -66,6 +66,31 @@ templ Page(components ...templ.Component) {
                 margin-left: 1em;
             }
 
+            #spymaster-suggestion {
+                display: grid;
+                place-items: center;
+            }
+
+            #clue-block {
+                margin-top: 0.5rem;
+                margin-left: 1.5rem;
+
+                padding: 0.8rem 1.2rem;
+
+                background-color: coral;
+                border-radius: 5px;
+            }
+
+            .clue, .clue-matches {
+                font-family: cursive;
+                font-size: 1.2em;
+
+                padding: 0.4rem;
+
+                background-color: palevioletred;
+                border-radius: 3px;
+            }
+
             #player-list {
                 display: inline-block;
                 margin-left: 1.5rem;

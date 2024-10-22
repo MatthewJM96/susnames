@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -25,6 +26,9 @@ type Room struct {
 	GameStateMutex sync.Mutex
 	Started        bool
 	Counterspies   int
+	Turn           PlayerRole
+	Clue           string
+	ClueMatches    int
 	Words          [25]string
 }
 
@@ -143,6 +147,7 @@ func (r *Room) startGame() {
 	r.GameStateMutex.Lock()
 
 	r.Started = true
+	r.Turn = SPYMASTER
 	r.Words = [25]string{
 		"relinquish", "genuine", "formula", "gain", "established", "development", "long",
 		"personality", "package", "reveal", "premium", "carve", "authority", "blast",
@@ -155,6 +160,72 @@ func (r *Room) startGame() {
 	r.GameStateMutex.Unlock()
 
 	r.broadcastGameState(context.Background())
+}
+
+func (r *Room) endClueGuessing(conn *connectionManager) {
+	r.GameStateMutex.Lock()
+
+	if r.Turn != SPY {
+		r.Log.Error(
+			fmt.Sprintf(
+				"(%s, %s) tried to stop guessing while it wasn't the Spies' go",
+				conn.Player.SessionID,
+				conn.Player.Name,
+			),
+		)
+		return
+	}
+
+	if conn.Player.Role != SPY && conn.Player.Role != COUNTERSPY {
+		r.Log.Error(
+			fmt.Sprintf(
+				"(%s, %s) tried to stop guessing but is not a Spy",
+				conn.Player.SessionID,
+				conn.Player.Name,
+			),
+		)
+		return
+	}
+
+	r.Turn = SPYMASTER
+
+	r.GameStateMutex.Unlock()
+
+	r.broadcastClueSuggestor(context.Background())
+}
+
+func (r *Room) suggestClue(clue string, matches int, conn *connectionManager) {
+	r.GameStateMutex.Lock()
+
+	if r.Turn != SPYMASTER {
+		r.Log.Error(
+			fmt.Sprintf(
+				"(%s, %s) tried to suggest clue while it wasn't the Spymaster's go",
+				conn.Player.SessionID,
+				conn.Player.Name,
+			),
+		)
+		return
+	}
+
+	if conn.Player.Role != SPYMASTER {
+		r.Log.Error(
+			fmt.Sprintf(
+				"(%s, %s) tried to suggest clue but is not the Spymaster",
+				conn.Player.SessionID,
+				conn.Player.Name,
+			),
+		)
+		return
+	}
+
+	r.Turn = SPY
+	r.Clue = clue
+	r.ClueMatches = matches
+
+	r.GameStateMutex.Unlock()
+
+	r.broadcastClue(context.Background())
 }
 
 func (r *Room) cookie(name string, value string) *http.Cookie {
@@ -170,12 +241,22 @@ func (r *Room) cookie(name string, value string) *http.Cookie {
 	}
 }
 
-func (r *Room) processCommand(comm *command, _ *connectionManager) {
+func (r *Room) processCommand(comm *command, conn *connectionManager) {
 	switch comm.Cmd {
 	case "start-game":
 		r.startGame()
+	case "suggest-clue":
+		clueMatches, err := strconv.Atoi(comm.Data1)
+		if err != nil {
+			r.Log.Error(fmt.Sprintf("could not parse Data1 as integer (clue matches): %s", comm.Data1))
+			return
+		}
+
+		r.suggestClue(comm.Data0, clueMatches, conn)
+	case "end-clue-guessing":
+		r.endClueGuessing(conn)
 	case "change-name":
-		r.setPlayerName(comm.Data)
+		r.setPlayerName(comm.Data0)
 	default:
 		r.Log.Error(fmt.Sprintf("unrecognised command: %s", comm.Cmd))
 	}

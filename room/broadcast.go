@@ -59,11 +59,17 @@ func (r *Room) broadcastPlayerList(ctx context.Context) {
 	)
 }
 
-func (r *Room) makeGameState(ctx context.Context) []byte {
+func (r *Room) makeGameState(ctx context.Context, player *Player) []byte {
 	buf := new(bytes.Buffer)
 
 	components.Grid(r.Words).Render(ctx, buf)
 	components.EmptyGameControl().Render(ctx, buf)
+
+	if r.Turn == SPYMASTER && player.Role == SPYMASTER {
+		components.ClueSuggestor().Render(ctx, buf)
+	} else if r.Turn == SPY {
+		components.Clue(r.Clue, r.ClueMatches).Render(ctx, buf)
+	}
 
 	return buf.Bytes()
 }
@@ -78,7 +84,53 @@ func (r *Room) broadcastGameState(ctx context.Context) {
 
 	r.broadcastMessage(
 		func(player *Player) ([]byte, bool) {
-			return r.makeGameState(ctx), false
+			return r.makeGameState(ctx, player), false
+		},
+	)
+
+	r.broadcastPlayerList(ctx)
+}
+
+func (r *Room) broadcastClue(ctx context.Context) {
+	r.GameStateMutex.Lock()
+	defer r.GameStateMutex.Unlock()
+
+	if !r.Started || r.Turn != SPY {
+		return
+	}
+
+	r.broadcastMessage(
+		func(*Player) ([]byte, bool) {
+			buf := new(bytes.Buffer)
+
+			components.Clue(r.Clue, r.ClueMatches).Render(ctx, buf)
+
+			return buf.Bytes(), false
+		},
+	)
+
+	r.broadcastPlayerList(ctx)
+}
+
+func (r *Room) broadcastClueSuggestor(ctx context.Context) {
+	r.GameStateMutex.Lock()
+	defer r.GameStateMutex.Unlock()
+
+	if !r.Started || r.Turn != SPY {
+		return
+	}
+
+	r.broadcastMessage(
+		func(player *Player) ([]byte, bool) {
+			if player.Role != SPYMASTER {
+				return nil, true
+			}
+
+			buf := new(bytes.Buffer)
+
+			components.ClueSuggestor().Render(ctx, buf)
+
+			return buf.Bytes(), false
 		},
 	)
 
@@ -93,5 +145,5 @@ func (r *Room) broadcastGameStateToPlayer(ctx context.Context, player *Player) {
 		return
 	}
 
-	r.broadcastMessageToPlayer(r.makeGameState(ctx), player)
+	r.broadcastMessageToPlayer(r.makeGameState(ctx, player), player)
 }

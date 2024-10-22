@@ -1,5 +1,7 @@
 package components
 
+import "strconv"
+
 templ EmptyGameControl() {
 	<div id="game-control"></div>
 }
@@ -7,7 +9,25 @@ templ EmptyGameControl() {
 templ GameControl(room_name string) {
 	<div id="game-control">
 		<form id="start-game" ws-send hx-vals='{"cmd": "start-game"}'>
-			<button>Start game</button>
+			<button>Start Game</button>
+		</form>
+	</div>
+}
+
+templ Clue(clue string, clueMatches int) {
+	<div id="spymaster-suggestion">
+		<div id="clue-block">
+			<span class="clue">{ clue }</span> <span class="clue-matches">{ strconv.Itoa(clueMatches) }</span>
+		</div>
+	</div>
+}
+
+templ ClueSuggestor() {
+	<div id="spymaster-suggestion">
+		<form id="suggestor" ws-send hx-vals='{"cmd": "suggest-clue"}'>
+			<button>Suggest</button>
+			<input type="text" name="data0" placeholder="suggestion">
+			<input type="number" name="data1" placeholder="count">
 		</form>
 	</div>
 }
@@ -16,7 +36,8 @@ templ Room(room_name string) {
 	<div id="room" hx-ext="ws" ws-connect={ "/room/"+room_name+"/conn" }>
 		<div id="player-list"></div>
 		<form id="player-name-changer" ws-send hx-vals='{"cmd": "change-name"}'>
-			<button>Change name:</button> <input type="text" name="data" placeholder="name">
+			<button>Change Name</button>
+			<input type="text" name="data0" placeholder="name">
 		</form>
 
 		@GameControl(room_name)
@@ -25,6 +46,7 @@ templ Room(room_name string) {
 
 		<div id="game-arena">
 			<div id="grid"></div>
+			<div id="spymaster-suggestion"></div>
 		</div>
 	</div>
 }

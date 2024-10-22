@@ -28,8 +28,9 @@ type connectionManager struct {
 }
 
 type command struct {
-	Cmd  string `json:"cmd"`
-	Data string `json:"data"`
+	Cmd   string `json:"cmd"`
+	Data0 string `json:"data0"`
+	Data1 string `json:"data1"`
 }
 
 func newConnectionManager(
