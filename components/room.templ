@@ -14,10 +14,20 @@ templ GameControl(room_name string) {
 	</div>
 }
 
-templ Clue(clue string, clueMatches int) {
+templ EmptySpymasterSuggestion() {
+	<div id="spymaster-suggestion"></div>
+}
+
+templ Clue(clue string, clueMatches int, showEndGuessing bool) {
 	<div id="spymaster-suggestion">
 		<div id="clue-block">
-			<span class="clue">{ clue }</span> <span class="clue-matches">{ strconv.Itoa(clueMatches) }</span>
+			<span class="clue">{ clue }</span>
+			<span class="clue-matches">{ strconv.Itoa(clueMatches) }</span>
+			if showEndGuessing {
+				<form id="end-guessing" ws-send hx-vals='{"cmd": "end-clue-guessing"}'>
+					<button>End Guessing</button>
+				</form>
+			}
 		</div>
 	</div>
 }

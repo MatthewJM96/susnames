@@ -68,7 +68,11 @@ func (r *Room) makeGameState(ctx context.Context, player *Player) []byte {
 	if r.Turn == SPYMASTER && player.Role == SPYMASTER {
 		components.ClueSuggestor().Render(ctx, buf)
 	} else if r.Turn == SPY {
-		components.Clue(r.Clue, r.ClueMatches).Render(ctx, buf)
+		if player.Role == SPY || player.Role == COUNTERSPY {
+			components.Clue(r.Clue, r.ClueMatches, true).Render(ctx, buf)
+		} else {
+			components.Clue(r.Clue, r.ClueMatches, false).Render(ctx, buf)
+		}
 	}
 
 	return buf.Bytes()
@@ -100,10 +104,14 @@ func (r *Room) broadcastClue(ctx context.Context) {
 	}
 
 	r.broadcastMessage(
-		func(*Player) ([]byte, bool) {
+		func(p *Player) ([]byte, bool) {
 			buf := new(bytes.Buffer)
 
-			components.Clue(r.Clue, r.ClueMatches).Render(ctx, buf)
+			if p.Role == SPY || p.Role == COUNTERSPY {
+				components.Clue(r.Clue, r.ClueMatches, true).Render(ctx, buf)
+			} else {
+				components.Clue(r.Clue, r.ClueMatches, false).Render(ctx, buf)
+			}
 
 			return buf.Bytes(), false
 		},
@@ -116,19 +124,20 @@ func (r *Room) broadcastClueSuggestor(ctx context.Context) {
 	r.GameStateMutex.Lock()
 	defer r.GameStateMutex.Unlock()
 
-	if !r.Started || r.Turn != SPY {
+	if !r.Started || r.Turn != SPYMASTER {
 		return
 	}
 
 	r.broadcastMessage(
 		func(player *Player) ([]byte, bool) {
-			if player.Role != SPYMASTER {
-				return nil, true
-			}
 
 			buf := new(bytes.Buffer)
 
-			components.ClueSuggestor().Render(ctx, buf)
+			if player.Role != SPYMASTER {
+				components.EmptySpymasterSuggestion().Render(ctx, buf)
+			} else {
+				components.ClueSuggestor().Render(ctx, buf)
+			}
 
 			return buf.Bytes(), false
 		},

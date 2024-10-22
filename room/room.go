@@ -189,6 +189,8 @@ func (r *Room) endClueGuessing(conn *connectionManager) {
 
 	r.Turn = SPYMASTER
 
+	r.Log.Info(fmt.Sprintf("(%s, %s) ended guessing", conn.Player.SessionID, conn.Player.Name))
+
 	r.GameStateMutex.Unlock()
 
 	r.broadcastClueSuggestor(context.Background())
@@ -222,6 +224,8 @@ func (r *Room) suggestClue(clue string, matches int, conn *connectionManager) {
 	r.Turn = SPY
 	r.Clue = clue
 	r.ClueMatches = matches
+
+	r.Log.Info(fmt.Sprintf("(%s, %s) suggested clue (%s, %d)", conn.Player.SessionID, conn.Player.Name, r.Clue, r.ClueMatches))
 
 	r.GameStateMutex.Unlock()
 
