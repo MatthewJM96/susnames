@@ -59,23 +59,28 @@ func (r *Room) broadcastPlayerList(ctx context.Context) {
 	)
 }
 
-func (r *Room) unsafebroadcastGrid(ctx context.Context) {
-	r.broadcastMessage(
-		func(player *Player) ([]byte, bool) {
-			buf := new(bytes.Buffer)
+func (r *Room) makeGameState(ctx context.Context) []byte {
+	buf := new(bytes.Buffer)
 
-			components.Grid(r.Words).Render(ctx, buf)
+	components.Grid(r.Words).Render(ctx, buf)
+	components.EmptyGameControl().Render(ctx, buf)
 
-			return buf.Bytes(), false
-		},
-	)
+	return buf.Bytes()
 }
 
 func (r *Room) broadcastGameState(ctx context.Context) {
 	r.GameStateMutex.Lock()
 	defer r.GameStateMutex.Unlock()
 
-	r.unsafebroadcastGrid(ctx)
+	if !r.Started {
+		return
+	}
+
+	r.broadcastMessage(
+		func(player *Player) ([]byte, bool) {
+			return r.makeGameState(ctx), false
+		},
+	)
 
 	r.broadcastPlayerList(ctx)
 }
@@ -88,10 +93,5 @@ func (r *Room) broadcastGameStateToPlayer(ctx context.Context, player *Player) {
 		return
 	}
 
-	buf := new(bytes.Buffer)
-
-	components.Grid(r.Words).Render(ctx, buf)
-	components.EmptyGameControl().Render(ctx, buf)
-
-	r.broadcastMessageToPlayer(buf.Bytes(), player)
+	r.broadcastMessageToPlayer(r.makeGameState(ctx), player)
 }
