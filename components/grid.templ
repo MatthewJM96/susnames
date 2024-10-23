@@ -1,15 +1,17 @@
 package components
 
-templ card(contents string) {
-	<div class="card">{ contents }</div>
+import "github.com/MatthewJM96/susnames/grid"
+
+templ card(card *grid.Card) {
+	<div class="card">{ card.Word }</div>
 }
 
-templ Grid(contents [25]string) {
+templ Grid(grid *grid.Grid) {
 	<div id="grid">
 		for i := range 5 {
 			<div class="card-row">
 				for j := range 5 {
-					@card(contents[i * 5 + j])
+					@card(&grid.Cards[i * 5 + j])
 				}
 			</div>
 		}

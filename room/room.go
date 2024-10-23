@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MatthewJM96/susnames/grid"
 	"github.com/MatthewJM96/susnames/util"
 	"github.com/spf13/viper"
 )
@@ -29,7 +30,7 @@ type Room struct {
 	Turn           PlayerRole
 	Clue           string
 	ClueMatches    int
-	Words          [25]string
+	Grid           *grid.Grid
 }
 
 var rooms map[string]*Room = make(map[string]*Room)
@@ -148,12 +149,14 @@ func (r *Room) startGame() {
 
 	r.Started = true
 	r.Turn = SPYMASTER
-	r.Words = [25]string{
-		"relinquish", "genuine", "formula", "gain", "established", "development", "long",
-		"personality", "package", "reveal", "premium", "carve", "authority", "blast",
-		"compromise", "acid", "video", "live", "eject", "redundancy", "announcement",
-		"tear", "depressed", "cunning", "child",
-	}
+	r.Grid = grid.CreateGridFromWords(
+		[25]string{
+			"relinquish", "genuine", "formula", "gain", "established", "development",
+			"long", "personality", "package", "reveal", "premium", "carve", "authority",
+			"blast", "compromise", "acid", "video", "live", "eject", "redundancy",
+			"announcement", "tear", "depressed", "cunning", "child",
+		},
+	)
 
 	r.assignRoles()
 

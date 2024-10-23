@@ -62,7 +62,7 @@ func (r *Room) broadcastPlayerList(ctx context.Context) {
 func (r *Room) makeGameState(ctx context.Context, player *Player) []byte {
 	buf := new(bytes.Buffer)
 
-	components.Grid(r.Words).Render(ctx, buf)
+	components.Grid(r.Grid).Render(ctx, buf)
 	components.EmptyGameControl().Render(ctx, buf)
 
 	if r.Turn == SPYMASTER && player.Role == SPYMASTER {
