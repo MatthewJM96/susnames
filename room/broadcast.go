@@ -65,8 +65,12 @@ func (r *Room) makeGameState(ctx context.Context, player *Player) []byte {
 	components.Grid(r.Grid).Render(ctx, buf)
 	components.EmptyGameControl().Render(ctx, buf)
 
-	if r.Turn == SPYMASTER && player.Role == SPYMASTER {
-		components.ClueSuggestor().Render(ctx, buf)
+	if r.Turn == SPYMASTER {
+		if player.Role == SPYMASTER {
+			components.ClueSuggestor().Render(ctx, buf)
+		} else {
+			components.EmptySpymasterSuggestion().Render(ctx, buf)
+		}
 	} else if r.Turn == SPY {
 		if player.Role == SPY || player.Role == COUNTERSPY {
 			components.Clue(r.Clue, r.ClueMatches, true).Render(ctx, buf)

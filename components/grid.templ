@@ -11,7 +11,7 @@ templ Grid(grid *grid.Grid) {
 		for i := range 5 {
 			<div class="card-row">
 				for j := range 5 {
-					@card(&grid.Cards[i * 5 + j])
+					@card(grid.Cards[i * 5 + j])
 				}
 			</div>
 		}
