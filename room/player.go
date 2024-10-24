@@ -47,7 +47,6 @@ func getPublicPlayerRoleClass(role PlayerRole) string {
 type Player struct {
 	SessionID string
 	Name      string
-	Room      *Room
 
 	Role PlayerRole
 
@@ -59,11 +58,10 @@ func generatePlayerName() string {
 	return util.GenerateRandomTwoPartName()
 }
 
-func newPlayer(sessionID string, name string, room *Room) *Player {
+func newPlayer(sessionID string, name string) *Player {
 	return &Player{
 		SessionID: sessionID,
 		Name:      name,
-		Room:      room,
 		Role:      SPY,
 		Msgs:      make(chan []byte, 16),
 	}
@@ -139,7 +137,7 @@ func (r *Room) addPlayer(sessionID string, name string) (*Player, error) {
 		return nil, fmt.Errorf("player already exists with session ID: %s", sessionID)
 	}
 
-	player := newPlayer(sessionID, name, r)
+	player := newPlayer(sessionID, name)
 	r.Players[sessionID] = player
 
 	r.Log.Info(fmt.Sprintf("added player: (%s, %s) to room %s", sessionID, player.Name, r.Name))
