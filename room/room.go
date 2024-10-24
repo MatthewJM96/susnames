@@ -271,6 +271,10 @@ func (r *Room) suggestClue(clue string, matches int, conn *connectionManager) {
 	r.VoteEndVotes = 0
 	r.Grid.ResetVote()
 
+	for _, player := range r.Players {
+		player.Votes = 0
+	}
+
 	if r.VoteTimer != nil && r.VoteTimer.Stop() {
 		r.Log.Error(
 			fmt.Sprintf(
@@ -314,6 +318,74 @@ func (r *Room) voteCard(cardIndex int, conn *connectionManager) {
 	if r.Turn != SPY {
 		r.Log.Error(
 			fmt.Sprintf(
+				"(%s, %s) tried to vote for a card while it wasn't the Spies' go",
+				conn.Player.SessionID,
+				conn.Player.Name,
+			),
+		)
+		return
+	}
+
+	if conn.Player.Role != SPY && conn.Player.Role != COUNTERSPY {
+		r.Log.Error(
+			fmt.Sprintf(
+				"(%s, %s) tried to vote for a card but is not a Spy or Counterspy",
+				conn.Player.SessionID,
+				conn.Player.Name,
+			),
+		)
+		return
+	}
+
+	if conn.Player.Votes >= r.ClueMatches+1 {
+		r.Log.Info(
+			fmt.Sprintf(
+				"(%s, %s) tried to vote for card %d but had hit max votes",
+				conn.Player.SessionID,
+				conn.Player.Name,
+				cardIndex,
+			),
+		)
+		return
+	}
+
+	voted, err := r.Grid.VoteCardAtIndex(cardIndex, conn.Player.SessionID)
+	if err != nil {
+		r.Log.Error(err.Error())
+	}
+
+	if voted {
+		r.Log.Info(
+			fmt.Sprintf(
+				"(%s, %s) voted for card at index %d",
+				conn.Player.SessionID,
+				conn.Player.Name,
+				cardIndex,
+			),
+		)
+
+		conn.Player.Votes += 1
+
+		// TODO(Matthew): broadcast to voter a card change to reflect accepted vote.
+	} else {
+		r.Log.Warn(
+			fmt.Sprintf(
+				"(%s, %s) tried to vote for card at index %d but had already",
+				conn.Player.SessionID,
+				conn.Player.Name,
+				cardIndex,
+			),
+		)
+	}
+}
+
+func (r *Room) unvoteCard(cardIndex int, conn *connectionManager) {
+	r.GameStateMutex.Lock()
+	defer r.GameStateMutex.Unlock()
+
+	if r.Turn != SPY {
+		r.Log.Error(
+			fmt.Sprintf(
 				"(%s, %s) tried to select a card while it wasn't the Spies' go",
 				conn.Player.SessionID,
 				conn.Player.Name,
@@ -322,9 +394,6 @@ func (r *Room) voteCard(cardIndex int, conn *connectionManager) {
 		return
 	}
 
-	// TODO(Matthew): do we want the voting mechanism to allow for any spy or counterspy
-	//	              to unilaterally select cards, or instead should it be timed voting
-	//	              with "counters" on cards up to the number the spymaster presents?
 	if conn.Player.Role != SPY && conn.Player.Role != COUNTERSPY {
 		r.Log.Error(
 			fmt.Sprintf(
@@ -336,9 +405,33 @@ func (r *Room) voteCard(cardIndex int, conn *connectionManager) {
 		return
 	}
 
-	_, err := r.Grid.VoteCardAtIndex(cardIndex)
+	unvoted, err := r.Grid.UnvoteCardAtIndex(cardIndex, conn.Player.SessionID)
 	if err != nil {
 		r.Log.Error(err.Error())
+	}
+
+	if unvoted {
+		r.Log.Info(
+			fmt.Sprintf(
+				"(%s, %s) unvoted card at index %d",
+				conn.Player.SessionID,
+				conn.Player.Name,
+				cardIndex,
+			),
+		)
+
+		conn.Player.Votes -= 1
+
+		// TODO(Matthew): broadcast to voter a card change to reflect accepted vote.
+	} else {
+		r.Log.Warn(
+			fmt.Sprintf(
+				"(%s, %s) tried to unvote card at index %d but had not voted for it",
+				conn.Player.SessionID,
+				conn.Player.Name,
+				cardIndex,
+			),
+		)
 	}
 }
 
@@ -375,6 +468,14 @@ func (r *Room) processCommand(comm *command, conn *connectionManager) {
 		}
 
 		r.voteCard(cardIndex, conn)
+	case "unvote-card":
+		cardIndex, err := strconv.Atoi(comm.Data0)
+		if err != nil {
+			r.Log.Error(fmt.Sprintf("could not parse Data0 as integer (card index): %s", comm.Data0))
+			return
+		}
+
+		r.unvoteCard(cardIndex, conn)
 	case "end-clue-guessing":
 		r.endClueGuessing(conn)
 	case "change-name":

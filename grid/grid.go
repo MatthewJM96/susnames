@@ -20,7 +20,7 @@ type Card struct {
 	Word     string
 	Selected bool
 	Type     CardType
-	Votes    int
+	Votes    map[string]struct{}
 }
 
 type Grid struct {
@@ -31,6 +31,9 @@ type Grid struct {
 func CreateGrid(spyCards int, counterspyCards int) *Grid {
 	grid := &Grid{}
 
+	// TODO(Matthew): support card decks, and even custom decks.
+	// grid.assignCards()
+
 	grid.assignTypes(spyCards, counterspyCards)
 
 	return grid
@@ -39,7 +42,12 @@ func CreateGrid(spyCards int, counterspyCards int) *Grid {
 func CreateGridFromWords(spyCards int, counterspyCards int, words [25]string) *Grid {
 	var cards [25]*Card
 	for i, word := range words {
-		cards[i] = &Card{word, false, CIVILIAN, 0}
+		cards[i] = &Card{
+			Word:     word,
+			Selected: false,
+			Type:     CIVILIAN,
+			Votes:    make(map[string]struct{}),
+		}
 	}
 
 	grid := &Grid{
@@ -92,13 +100,13 @@ func (g *Grid) assignTypes(spyCards int, counterspyCards int) {
 
 func (g *Grid) ResetVote() {
 	for _, card := range g.Cards {
-		card.Votes = 0
+		card.Votes = make(map[string]struct{})
 	}
 }
 
-func (g *Grid) VoteCardAtIndex(index int) (CardType, error) {
+func (g *Grid) VoteCardAtIndex(index int, voteID string) (bool, error) {
 	if index >= 25 {
-		return CIVILIAN, fmt.Errorf("card index %d out-of-range", index)
+		return false, fmt.Errorf("card index %d out-of-range", index)
 	}
 
 	g.GridMutex.Lock()
@@ -107,39 +115,49 @@ func (g *Grid) VoteCardAtIndex(index int) (CardType, error) {
 	card := g.Cards[index]
 
 	if card.Selected {
-		return card.Type, fmt.Errorf("card at index %d already selected", index)
+		return false, fmt.Errorf("card at index %d already selected", index)
 	}
 
-	card.Selected = true
+	_, exists := card.Votes[voteID]
+	if exists {
+		return false, nil
+	}
 
-	return card.Type, nil
+	card.Votes[voteID] = struct{}{}
+
+	return true, nil
 }
 
-func (g *Grid) VoteCardByWord(word string) (CardType, error) {
+func (g *Grid) UnvoteCardAtIndex(index int, voteID string) (bool, error) {
+	if index >= 25 {
+		return false, fmt.Errorf("card index %d out-of-range", index)
+	}
+
 	g.GridMutex.Lock()
 	defer g.GridMutex.Unlock()
 
-	for index, card := range g.Cards {
-		if card.Word == word {
-			if card.Selected {
-				return card.Type, fmt.Errorf("card at index %d already selected", index)
-			}
+	card := g.Cards[index]
 
-			card.Selected = true
-
-			return card.Type, nil
-		}
+	if card.Selected {
+		return false, fmt.Errorf("card at index %d already selected", index)
 	}
 
-	return CIVILIAN, fmt.Errorf("no card with word %s", word)
+	_, exists := card.Votes[voteID]
+	if !exists {
+		return false, nil
+	}
+
+	delete(card.Votes, voteID)
+
+	return true, nil
 }
 
 func (g *Grid) EvaluateVote() error {
 	highestVote := 0
 	highestIndex := -1
 	for index, card := range g.Cards {
-		if card.Votes > highestVote {
-			highestVote = card.Votes
+		if len(card.Votes) > highestVote {
+			highestVote = len(card.Votes)
 			highestIndex = index
 		}
 	}

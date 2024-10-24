@@ -50,6 +50,8 @@ type Player struct {
 
 	Role PlayerRole
 
+	Votes int
+
 	Msgs      chan []byte
 	CloseConn func()
 }
@@ -63,6 +65,7 @@ func newPlayer(sessionID string, name string) *Player {
 		SessionID: sessionID,
 		Name:      name,
 		Role:      SPY,
+		Votes:     0,
 		Msgs:      make(chan []byte, 16),
 	}
 }
