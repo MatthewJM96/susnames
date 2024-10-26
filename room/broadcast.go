@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/MatthewJM96/susnames/components"
+	"github.com/MatthewJM96/susnames/grid"
 	"github.com/a-h/templ"
 )
 
@@ -59,10 +60,25 @@ func (r *Room) broadcastPlayerList(ctx context.Context) {
 	)
 }
 
+func (r *Room) broadcastCard(ctx context.Context, player *Player, card *grid.Card) {
+	r.GameStateMutex.Lock()
+	defer r.GameStateMutex.Unlock()
+
+	if !r.Started {
+		return
+	}
+
+	buf := new(bytes.Buffer)
+
+	components.Card(card, r.Turn == SPY, player.SessionID).Render(ctx, buf)
+
+	r.broadcastMessageToPlayer(buf.Bytes(), player)
+}
+
 func (r *Room) makeGameState(ctx context.Context, player *Player) []byte {
 	buf := new(bytes.Buffer)
 
-	components.Grid(r.Grid).Render(ctx, buf)
+	components.Grid(r.Grid, r.Turn == SPY, player.SessionID).Render(ctx, buf)
 	components.EmptyGameControl().Render(ctx, buf)
 
 	if r.Turn == SPYMASTER {

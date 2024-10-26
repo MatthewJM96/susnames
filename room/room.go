@@ -349,7 +349,7 @@ func (r *Room) voteCard(cardIndex int, conn *connectionManager) {
 		return
 	}
 
-	voted, err := r.Grid.VoteCardAtIndex(cardIndex, conn.Player.SessionID)
+	voted, card, err := r.Grid.VoteCardAtIndex(cardIndex, conn.Player.SessionID)
 	if err != nil {
 		r.Log.Error(err.Error())
 	}
@@ -366,7 +366,9 @@ func (r *Room) voteCard(cardIndex int, conn *connectionManager) {
 
 		conn.Player.Votes += 1
 
-		// TODO(Matthew): broadcast to voter a card change to reflect accepted vote.
+		r.GameStateMutex.Unlock()
+
+		r.broadcastCard(context.Background(), conn.Player, card)
 	} else {
 		r.Log.Warn(
 			fmt.Sprintf(
@@ -405,7 +407,7 @@ func (r *Room) unvoteCard(cardIndex int, conn *connectionManager) {
 		return
 	}
 
-	unvoted, err := r.Grid.UnvoteCardAtIndex(cardIndex, conn.Player.SessionID)
+	unvoted, card, err := r.Grid.UnvoteCardAtIndex(cardIndex, conn.Player.SessionID)
 	if err != nil {
 		r.Log.Error(err.Error())
 	}
@@ -422,7 +424,9 @@ func (r *Room) unvoteCard(cardIndex int, conn *connectionManager) {
 
 		conn.Player.Votes -= 1
 
-		// TODO(Matthew): broadcast to voter a card change to reflect accepted vote.
+		r.GameStateMutex.Unlock()
+
+		r.broadcastCard(context.Background(), conn.Player, card)
 	} else {
 		r.Log.Warn(
 			fmt.Sprintf(

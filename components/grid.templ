@@ -2,16 +2,41 @@ package components
 
 import "github.com/MatthewJM96/susnames/grid"
 
-templ card(card *grid.Card) {
-	<div class="card">{ card.Word }</div>
+templ Card(card *grid.Card, voting bool, sessionID string) {
+	if card.Selected {
+		switch card.Type {
+		case grid.CIVILIAN:
+			<div id={ "card-" + card.Word } class="card card-civilian">{ card.Word }</div>
+		case grid.SPY_TARGET:
+			<div id={ "card-" + card.Word } class="card card-spy-target">{ card.Word }</div>
+		case grid.COUNTERSPY_TARGET:
+			<div id={ "card-" + card.Word } class="card card-counterspy-target">{ card.Word }</div>
+		}
+	} else {
+		if voting {
+			if _, exists := card.Votes[sessionID]; exists {
+				<div id={ "card-" + card.Word } class="card">
+					{ card.Word }
+					<button class="card-unvote"></button>
+				</div>
+			} else {
+				<div id={ "card-" + card.Word } class="card">
+					{ card.Word }
+					<button class="card-vote"></button>
+				</div>
+			}
+		} else {
+			<div id={ "card-" + card.Word } class="card">{ card.Word }</div>
+		}
+	}
 }
 
-templ Grid(grid *grid.Grid) {
+templ Grid(grid *grid.Grid, voting bool, sessionID string) {
 	<div id="grid">
 		for i := range 5 {
 			<div class="card-row">
 				for j := range 5 {
-					@card(grid.Cards[i * 5 + j])
+					@Card(grid.Cards[i * 5 + j], voting, sessionID)
 				}
 			</div>
 		}

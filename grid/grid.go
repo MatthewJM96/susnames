@@ -104,9 +104,9 @@ func (g *Grid) ResetVote() {
 	}
 }
 
-func (g *Grid) VoteCardAtIndex(index int, voteID string) (bool, error) {
+func (g *Grid) VoteCardAtIndex(index int, voteID string) (bool, *Card, error) {
 	if index >= 25 {
-		return false, fmt.Errorf("card index %d out-of-range", index)
+		return false, nil, fmt.Errorf("card index %d out-of-range", index)
 	}
 
 	g.GridMutex.Lock()
@@ -115,22 +115,22 @@ func (g *Grid) VoteCardAtIndex(index int, voteID string) (bool, error) {
 	card := g.Cards[index]
 
 	if card.Selected {
-		return false, fmt.Errorf("card at index %d already selected", index)
+		return false, nil, fmt.Errorf("card at index %d already selected", index)
 	}
 
 	_, exists := card.Votes[voteID]
 	if exists {
-		return false, nil
+		return false, card, nil
 	}
 
 	card.Votes[voteID] = struct{}{}
 
-	return true, nil
+	return true, card, nil
 }
 
-func (g *Grid) UnvoteCardAtIndex(index int, voteID string) (bool, error) {
+func (g *Grid) UnvoteCardAtIndex(index int, voteID string) (bool, *Card, error) {
 	if index >= 25 {
-		return false, fmt.Errorf("card index %d out-of-range", index)
+		return false, nil, fmt.Errorf("card index %d out-of-range", index)
 	}
 
 	g.GridMutex.Lock()
@@ -139,17 +139,17 @@ func (g *Grid) UnvoteCardAtIndex(index int, voteID string) (bool, error) {
 	card := g.Cards[index]
 
 	if card.Selected {
-		return false, fmt.Errorf("card at index %d already selected", index)
+		return false, nil, fmt.Errorf("card at index %d already selected", index)
 	}
 
 	_, exists := card.Votes[voteID]
 	if !exists {
-		return false, nil
+		return false, card, nil
 	}
 
 	delete(card.Votes, voteID)
 
-	return true, nil
+	return true, card, nil
 }
 
 func (g *Grid) EvaluateVote() error {
