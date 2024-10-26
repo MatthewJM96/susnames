@@ -26,20 +26,41 @@ type Room struct {
 
 	GameStateMutex sync.Mutex
 	Started        bool
-	Spies          int // Note that this includes the number of counterspies.
-	Counterspies   int
-	Turn           PlayerRole
-	Clue           string
-	ClueMatches    int
-	Grid           *grid.Grid
-	VoteTimer      *time.Timer
-	VoteEndVotes   int
-	EndVotingOn    int
+
+	// Game state that is configurable by players.
+
+	Spies        int // Note that this includes the number of counterspies.
+	Counterspies int
+	VoteTime     time.Duration
+	/*
+	  If 0, timer begins when voting begins, at any value from 1 to Room.Spies the
+	  timer begins when that many spies/counterspies have ended guessing. Any other
+	  value disables the timer.
+	*/
+	VoteTimerAt int
+	/*
+	  Indicates the number of votes to end voting required to actually end the voting
+	  phase before the timeout. If this is set to a value <= 0 before starting a game,
+	  then this value is set to 2 more than the number of counterspies (capped to the
+	  total number of spies) at the start. Setting it to any value >= Room.Spies is
+	  equivalent.
+	*/
+	EndVotingOn int
+
+	// Game state that at most displayed to players.
+
+	Turn         PlayerRole
+	Clue         string
+	ClueMatches  int
+	Grid         *grid.Grid
+	VoteTimer    *time.Timer
+	VoteEndVotes int
+	PlayersVoted int
 }
 
 var rooms map[string]*Room = make(map[string]*Room)
 
-const VOTE_TIME = 30 * time.Second
+const DEFAULT_VOTE_TIME = 30 * time.Second
 
 func generateRoomName() string {
 	return util.GenerateRandomThreePartName()
@@ -68,6 +89,8 @@ func CreateRoom(config *viper.Viper, log *slog.Logger) (*Room, error) {
 		Started:      false,
 		Spies:        0,
 		Counterspies: -1,
+		VoteTime:     DEFAULT_VOTE_TIME,
+		VoteTimerAt:  0,
 		EndVotingOn:  -1,
 	}
 
@@ -173,9 +196,10 @@ func (r *Room) startGame() {
 
 	r.assignRoles()
 
-	// TODO(Matthew): is this a satisfying way of doing this?
-	if r.EndVotingOn == -1 {
+	if r.EndVotingOn <= 0 {
 		r.EndVotingOn = min(r.Counterspies+2, r.Spies)
+	} else if r.EndVotingOn > r.Spies {
+		r.EndVotingOn = r.Spies
 	}
 
 	r.GameStateMutex.Unlock()
@@ -183,7 +207,7 @@ func (r *Room) startGame() {
 	r.broadcastGameState(context.Background())
 }
 
-func (r *Room) endClueGuessing(conn *connectionManager) {
+func (r *Room) voteEndClueGuessing(conn *connectionManager) {
 	r.GameStateMutex.Lock()
 
 	if r.Turn != SPY {
@@ -209,10 +233,8 @@ func (r *Room) endClueGuessing(conn *connectionManager) {
 	}
 
 	r.VoteEndVotes += 1
-	if r.VoteEndVotes >= r.EndVotingOn {
+	if r.VoteEndVotes >= r.EndVotingOn || r.VoteEndVotes == r.Spies {
 		r.Log.Info("voting closed by players")
-
-		r.VoteTimer.Stop()
 
 		go r.endVoting()
 	} else {
@@ -268,9 +290,10 @@ func (r *Room) suggestClue(clue string, matches int, conn *connectionManager) {
 		),
 	)
 
-	r.VoteEndVotes = 0
 	r.Grid.ResetVote()
 
+	r.VoteEndVotes = 0
+	r.PlayersVoted = 0
 	for _, player := range r.Players {
 		player.Votes = 0
 	}
@@ -285,15 +308,17 @@ func (r *Room) suggestClue(clue string, matches int, conn *connectionManager) {
 		)
 	}
 
-	r.Log.Info(fmt.Sprintf("voting open, ends in %s", VOTE_TIME.String()))
+	r.Log.Info(fmt.Sprintf("voting open, ends in %s", r.VoteTime.String()))
 
-	r.VoteTimer = time.AfterFunc(
-		VOTE_TIME,
-		func() {
-			r.Log.Info("voting closed by timeout")
-			r.endVoting()
-		},
-	)
+	if r.VoteTimerAt == 0 {
+		r.VoteTimer = time.AfterFunc(
+			r.VoteTime,
+			func() {
+				r.Log.Info("voting closed by timeout")
+				r.endVoting()
+			},
+		)
+	}
 
 	r.GameStateMutex.Unlock()
 
@@ -302,6 +327,19 @@ func (r *Room) suggestClue(clue string, matches int, conn *connectionManager) {
 
 func (r *Room) endVoting() {
 	r.GameStateMutex.Lock()
+
+	if r.Turn != SPY {
+		r.GameStateMutex.Unlock()
+		return
+	}
+
+	// Call again as while it will often do nothing, if the timer was to start at the
+	// very moment voting was voted to end (a.k.a. majority agreed the clue couldn't
+	// lead to voting for any cards, but someone at that moment voted for a card), then
+	// there could be a race condition reaching this function.
+	r.VoteTimer.Stop()
+
+	r.VoteTimer = nil
 
 	r.Grid.EvaluateVote()
 	r.Turn = SPYMASTER
@@ -364,6 +402,20 @@ func (r *Room) voteCard(cardIndex int, conn *connectionManager) {
 			),
 		)
 
+		if conn.Player.Votes == 0 {
+			r.PlayersVoted += 1
+
+			if r.PlayersVoted == r.VoteTimerAt {
+				r.VoteTimer = time.AfterFunc(
+					r.VoteTime,
+					func() {
+						r.Log.Info("voting closed by timeout")
+						r.endVoting()
+					},
+				)
+			}
+		}
+
 		conn.Player.Votes += 1
 
 		r.GameStateMutex.Unlock()
@@ -424,6 +476,10 @@ func (r *Room) unvoteCard(cardIndex int, conn *connectionManager) {
 
 		conn.Player.Votes -= 1
 
+		if conn.Player.Votes == 0 {
+			r.PlayersVoted -= 1
+		}
+
 		r.GameStateMutex.Unlock()
 
 		r.broadcastCard(context.Background(), conn.Player, card)
@@ -481,7 +537,7 @@ func (r *Room) processCommand(comm *command, conn *connectionManager) {
 
 		r.unvoteCard(cardIndex, conn)
 	case "end-clue-guessing":
-		r.endClueGuessing(conn)
+		r.voteEndClueGuessing(conn)
 	case "change-name":
 		r.setPlayerName(comm.Data0)
 	default:
