@@ -70,7 +70,13 @@ func (r *Room) broadcastCard(ctx context.Context, player *Player, card *grid.Car
 
 	buf := new(bytes.Buffer)
 
-	components.Card(card, r.Turn == SPY, player.SessionID).Render(ctx, buf)
+	components.Card(
+		card,
+		card.Index,
+		r.Turn == SPY && (player.Role == SPY || player.Role == COUNTERSPY),
+		player.Role == SPYMASTER,
+		player.SessionID,
+	).Render(ctx, buf)
 
 	r.broadcastMessageToPlayer(buf.Bytes(), player)
 }
@@ -78,7 +84,12 @@ func (r *Room) broadcastCard(ctx context.Context, player *Player, card *grid.Car
 func (r *Room) makeGameState(ctx context.Context, player *Player) []byte {
 	buf := new(bytes.Buffer)
 
-	components.Grid(r.Grid, r.Turn == SPY, player.SessionID).Render(ctx, buf)
+	components.Grid(
+		r.Grid,
+		r.Turn == SPY && (player.Role == SPY || player.Role == COUNTERSPY),
+		player.Role == SPYMASTER,
+		player.SessionID,
+	).Render(ctx, buf)
 	components.EmptyGameControl().Render(ctx, buf)
 
 	if r.Turn == SPYMASTER {

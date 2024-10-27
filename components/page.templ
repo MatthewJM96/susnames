@@ -153,6 +153,7 @@ templ Page(components ...templ.Component) {
 
             .card {
                 display: inline-block;
+                position: relative;
 
                 height: 4em;
                 aspect-ratio: 16 / 9;
@@ -169,6 +170,30 @@ templ Page(components ...templ.Component) {
 
             .card:not(:last-child) {
                 margin-right: 5px;
+            }
+
+            .card-unvote, .card-vote {
+                padding: 4px;
+                aspect-ratio: 1;
+
+                font-size: 0.5em;
+                line-height: 0.5em;
+
+                position: absolute;
+                top: -2px;
+                right: -2px;
+
+                z-index: 999;
+            }
+
+            .card-spy-target {
+                background-color: #c4ffe4;
+            }
+            .card-counterspy-target {
+                background-color: #ffc4df;
+            }
+            .card-civilian {
+                background-color: #c4dfff;
             }
         </style>
     </head>

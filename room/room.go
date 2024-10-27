@@ -60,7 +60,7 @@ type Room struct {
 
 var rooms map[string]*Room = make(map[string]*Room)
 
-const DEFAULT_VOTE_TIME = 30 * time.Second
+const DEFAULT_VOTE_TIME = 300 * time.Second
 
 func generateRoomName() string {
 	return util.GenerateRandomThreePartName()
@@ -177,6 +177,7 @@ func (r *Room) assignRoles() {
 
 func (r *Room) startGame() {
 	r.GameStateMutex.Lock()
+	defer r.GameStateMutex.Unlock()
 
 	r.Started = true
 	r.Turn = SPYMASTER
@@ -202,9 +203,7 @@ func (r *Room) startGame() {
 		r.EndVotingOn = r.Spies
 	}
 
-	r.GameStateMutex.Unlock()
-
-	r.broadcastGameState(context.Background())
+	go r.broadcastGameState(context.Background())
 }
 
 func (r *Room) voteEndClueGuessing(conn *connectionManager) {
@@ -253,6 +252,7 @@ func (r *Room) voteEndClueGuessing(conn *connectionManager) {
 
 func (r *Room) suggestClue(clue string, matches int, conn *connectionManager) {
 	r.GameStateMutex.Lock()
+	defer r.GameStateMutex.Unlock()
 
 	if r.Turn != SPYMASTER {
 		r.Log.Error(
@@ -320,13 +320,12 @@ func (r *Room) suggestClue(clue string, matches int, conn *connectionManager) {
 		)
 	}
 
-	r.GameStateMutex.Unlock()
-
-	r.broadcastClue(context.Background())
+	go r.broadcastGameState(context.Background())
 }
 
 func (r *Room) endVoting() {
 	r.GameStateMutex.Lock()
+	defer r.GameStateMutex.Unlock()
 
 	if r.Turn != SPY {
 		r.GameStateMutex.Unlock()
@@ -344,9 +343,7 @@ func (r *Room) endVoting() {
 	r.Grid.EvaluateVote()
 	r.Turn = SPYMASTER
 
-	r.GameStateMutex.Unlock()
-
-	r.broadcastGameState(context.Background())
+	go r.broadcastGameState(context.Background())
 }
 
 func (r *Room) voteCard(cardIndex int, conn *connectionManager) {
@@ -418,9 +415,7 @@ func (r *Room) voteCard(cardIndex int, conn *connectionManager) {
 
 		conn.Player.Votes += 1
 
-		r.GameStateMutex.Unlock()
-
-		r.broadcastCard(context.Background(), conn.Player, card)
+		go r.broadcastCard(context.Background(), conn.Player, card)
 	} else {
 		r.Log.Warn(
 			fmt.Sprintf(
@@ -480,9 +475,7 @@ func (r *Room) unvoteCard(cardIndex int, conn *connectionManager) {
 			r.PlayersVoted -= 1
 		}
 
-		r.GameStateMutex.Unlock()
-
-		r.broadcastCard(context.Background(), conn.Player, card)
+		go r.broadcastCard(context.Background(), conn.Player, card)
 	} else {
 		r.Log.Warn(
 			fmt.Sprintf(

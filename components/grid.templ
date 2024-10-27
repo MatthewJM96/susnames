@@ -1,9 +1,10 @@
 package components
 
+import "strconv"
 import "github.com/MatthewJM96/susnames/grid"
 
-templ Card(card *grid.Card, voting bool, sessionID string) {
-	if card.Selected {
+templ Card(card *grid.Card, index int, voting bool, isSpymaster bool, sessionID string) {
+	if card.Selected || isSpymaster {
 		switch card.Type {
 		case grid.CIVILIAN:
 			<div id={ "card-" + card.Word } class="card card-civilian">{ card.Word }</div>
@@ -17,12 +18,12 @@ templ Card(card *grid.Card, voting bool, sessionID string) {
 			if _, exists := card.Votes[sessionID]; exists {
 				<div id={ "card-" + card.Word } class="card">
 					{ card.Word }
-					<button class="card-unvote"></button>
+					<button class="card-unvote" ws-send hx-vals={ "{\"cmd\": \"unvote-card\", \"data0\": \"" + strconv.Itoa(index) + "\"}" }>✘</button>
 				</div>
 			} else {
 				<div id={ "card-" + card.Word } class="card">
 					{ card.Word }
-					<button class="card-vote"></button>
+					<button class="card-vote" ws-send hx-vals={ "{\"cmd\": \"vote-card\", \"data0\": \"" + strconv.Itoa(index) + "\"}" }>✔</button>
 				</div>
 			}
 		} else {
@@ -31,12 +32,12 @@ templ Card(card *grid.Card, voting bool, sessionID string) {
 	}
 }
 
-templ Grid(grid *grid.Grid, voting bool, sessionID string) {
+templ Grid(grid *grid.Grid, voting bool, isSpymaster bool, sessionID string) {
 	<div id="grid">
 		for i := range 5 {
 			<div class="card-row">
 				for j := range 5 {
-					@Card(grid.Cards[i * 5 + j], voting, sessionID)
+					@Card(grid.Cards[i * 5 + j], i * 5 + j, voting, isSpymaster, sessionID)
 				}
 			</div>
 		}

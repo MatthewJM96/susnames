@@ -17,6 +17,7 @@ const (
 )
 
 type Card struct {
+	Index    int
 	Word     string
 	Selected bool
 	Type     CardType
@@ -43,6 +44,7 @@ func CreateGridFromWords(spyCards int, counterspyCards int, words [25]string) *G
 	var cards [25]*Card
 	for i, word := range words {
 		cards[i] = &Card{
+			Index:    i,
 			Word:     word,
 			Selected: false,
 			Type:     CIVILIAN,
