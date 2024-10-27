@@ -7,6 +7,7 @@ templ Page(components ...templ.Component) {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <script src="https://unpkg.com/htmx.org@2.0.3" integrity="sha384-0895/pl2MU10Hqc6jd4RvrthNlDiE9U1tWmX7WRESftEDRosgxNsQG/Ze9YMRzHq" crossorigin="anonymous"></script>
         <script src="https://unpkg.com/htmx-ext-ws@2.0.1/ws.js"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
         <script>
             /**
              * Add feature to htmx that allows specifying ":<KEY>" syntax in target URI
@@ -26,6 +27,41 @@ templ Page(components ...templ.Component) {
                     event.detail.path = pathWithParameters
                 })
             })
+
+            /**
+             * Animates a timer graphic. Only one such timer may exist at a time, but
+             * that's fine for this game.
+             */
+            function startTimer() {
+                const timer = document.getElementById('timer')
+                const timeLeftMessage = document.getElementById('time-left')
+                const timerCircle = timer.querySelector('svg > circle + circle')
+
+                timerCircle.style.strokeDashoffset = 1
+
+                const time = parseInt(timer.getAttribute("data-time"))
+                let timeLeft = time
+
+                console.log("starting timer with ", time, "seconds")
+
+                let countdownTimer = setInterval(function() {
+                    if (timeLeft <= 0) {
+                        clearInterval(countdownTimer)
+                        return
+                    }
+
+                    timeLeft -= 1;
+
+                    console.log("time left: ", timeLeft, "seconds")
+
+                    const normalizedTime = (time - timeLeft) / time
+
+                    console.log("normalised time left: ", normalizedTime, "seconds")
+
+                    timerCircle.style.strokeDashoffset = normalizedTime
+                    timeLeftMessage.innerHTML = timeLeft
+                }, 1000)
+            }
         </script>
         <style>
             body {
@@ -194,6 +230,40 @@ templ Page(components ...templ.Component) {
             }
             .card-civilian {
                 background-color: #c4dfff;
+            }
+
+            #timer {
+                margin-top: 10px;
+            }
+            
+            #timer > svg {
+                width: 100px;
+                height: 100px;
+            }
+
+            #timer > svg > circle {
+                fill: none;
+                stroke-opacity: 0.3;
+                stroke: #0d6efd;
+                stroke-width: 10;
+                transform-origin: center center;
+                transform: rotate(-90deg);
+            }
+
+            #timer > svg > circle + circle {
+                stroke-dasharray: 1;
+                stroke-dashoffset: 1;
+                stroke-linecap: round;
+                stroke-opacity: 1;
+                transition: stroke-dashoffset 0.3s ease;
+            }
+
+            #timer > svg > text {
+                font-size: 2rem;
+            }
+
+            #timer > svg > text + text {
+                font-size: 1rem;
             }
         </style>
     </head>

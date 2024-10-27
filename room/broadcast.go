@@ -187,3 +187,29 @@ func (r *Room) broadcastGameStateToPlayer(ctx context.Context, player *Player) {
 
 	r.broadcastMessageToPlayer(r.makeGameState(ctx, player), player)
 }
+
+func (r *Room) broadcastTimer(ctx context.Context) {
+	r.GameStateMutex.Lock()
+	defer r.GameStateMutex.Unlock()
+
+	if !r.Started {
+		return
+	}
+
+	r.broadcastMessage(
+		func(player *Player) ([]byte, bool) {
+
+			buf := new(bytes.Buffer)
+
+			if r.Turn == SPY && r.VoteTimer != nil {
+				components.Timer(r.VoteTime).Render(ctx, buf)
+			} else {
+				components.NoTimer().Render(ctx, buf)
+			}
+
+			return buf.Bytes(), false
+		},
+	)
+
+	r.broadcastPlayerList(ctx)
+}

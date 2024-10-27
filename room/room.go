@@ -318,6 +318,7 @@ func (r *Room) suggestClue(clue string, matches int, conn *connectionManager) {
 				r.endVoting()
 			},
 		)
+		go r.broadcastTimer(context.Background())
 	}
 
 	go r.broadcastGameState(context.Background())
@@ -344,6 +345,7 @@ func (r *Room) endVoting() {
 	r.Turn = SPYMASTER
 
 	go r.broadcastGameState(context.Background())
+	go r.broadcastTimer(context.Background())
 }
 
 func (r *Room) voteCard(cardIndex int, conn *connectionManager) {
@@ -410,6 +412,7 @@ func (r *Room) voteCard(cardIndex int, conn *connectionManager) {
 						r.endVoting()
 					},
 				)
+				go r.broadcastTimer(context.Background())
 			}
 		}
 

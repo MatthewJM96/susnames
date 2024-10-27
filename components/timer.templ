@@ -1,0 +1,18 @@
+package components
+
+import "fmt"
+import "time"
+
+templ NoTimer() {
+	<div id="timer"></div>
+}
+
+templ Timer(time time.Duration) {
+	<div id="timer" data-time={ fmt.Sprintf("%.0f", time.Seconds()) } x-init="startTimer()">
+        <svg>
+            <circle cx="50%" cy="50%" r="45"/>
+            <circle cx="50%" cy="50%" r="45" pathLength="1" />
+            <text x="40" y="60" text-anchor="middle"><tspan id="time-left"></tspan></text>
+        </svg>
+    </div>
+}
