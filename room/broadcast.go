@@ -50,7 +50,13 @@ func (r *Room) broadcastPlayerList(ctx context.Context) {
 					continue
 				}
 
-				tags = append(tags, components.PlayerNameTag(targetPlayer.Name, getPublicPlayerRoleClass(targetPlayer.Role)))
+				tags = append(
+					tags,
+					components.PlayerNameTag(
+						targetPlayer.Name,
+						getViewablePlayerRoleClass(player.Role, targetPlayer.Role),
+					),
+				)
 			}
 
 			components.PlayerList(tags).Render(ctx, buf)

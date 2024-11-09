@@ -31,14 +31,18 @@ func getPlayerRoleClass(role PlayerRole) string {
 	return ""
 }
 
-func getPublicPlayerRoleClass(role PlayerRole) string {
-	if role == SPECTATOR {
+func getViewablePlayerRoleClass(viewerRole PlayerRole, viewableRole PlayerRole) string {
+	if viewableRole == SPECTATOR {
 		return "spectator"
-	} else if role == SPYMASTER {
+	} else if viewableRole == SPYMASTER {
 		return "spymaster"
-	} else if role == SPY {
+	} else if viewableRole == SPY {
 		return "spy"
-	} else if role == COUNTERSPY {
+	} else if viewableRole == COUNTERSPY {
+		if viewerRole == COUNTERSPY {
+			return "counterspy"
+		}
+
 		return "spy"
 	}
 	return ""
