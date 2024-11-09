@@ -16,6 +16,13 @@ func main() {
 
 	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 
+	if config.GetBool("debug") {
+		log.Info(
+			"Running in debug mode, won't persist session IDs to enable " +
+				"multiple players in one browser.",
+		)
+	}
+
 	handlers := handler.NewHandler(config, log)
 
 	router := http.NewServeMux()
@@ -25,7 +32,7 @@ func main() {
 	router.HandleFunc("POST /room/{name}", handlers.JoinRoom)
 	router.HandleFunc("GET /room/{name}/conn", handlers.ConnectPlayerToRoom)
 
-	session := session.NewSessionMiddleware(router, config)
+	session := session.NewSessionMiddleware(router, config, log)
 
 	server := &http.Server{
 		Addr:         "localhost:9000",

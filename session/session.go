@@ -1,6 +1,7 @@
 package session
 
 import (
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -12,30 +13,19 @@ type SessionMiddlewareOpts func(*SessionMiddleware)
 
 var sessionID string = ""
 
-func NewSessionMiddleware(next http.Handler, config *viper.Viper) http.Handler {
+func NewSessionMiddleware(next http.Handler, config *viper.Viper, log *slog.Logger) http.Handler {
 	return SessionMiddleware{
-		Next:     next,
-		Secure:   config.GetBool("secure"),
-		HTTPOnly: config.GetBool("http_only"),
-	}
-}
-
-func WithSecure(secure bool) SessionMiddlewareOpts {
-	return func(m *SessionMiddleware) {
-		m.Secure = secure
-	}
-}
-
-func WithHTTPOnly(httpOnly bool) SessionMiddlewareOpts {
-	return func(m *SessionMiddleware) {
-		m.HTTPOnly = httpOnly
+		Config: config,
+		Log:    log,
+		Next:   next,
 	}
 }
 
 type SessionMiddleware struct {
-	Next     http.Handler
-	Secure   bool
-	HTTPOnly bool
+	Config *viper.Viper
+	Log    *slog.Logger
+
+	Next http.Handler
 }
 
 func SessionID() string {
@@ -48,8 +38,8 @@ func (mw SessionMiddleware) setSessionID(writer http.ResponseWriter) {
 		&http.Cookie{
 			Name:     "SN-SessionID",
 			Value:    sessionID,
-			Secure:   mw.Secure,
-			HttpOnly: mw.HTTPOnly,
+			Secure:   mw.Config.GetBool("secure"),
+			HttpOnly: mw.Config.GetBool("http_only"),
 			Expires:  time.Now().Add(30 * 24 * time.Hour),
 			Path:     "/",
 		},
@@ -57,16 +47,22 @@ func (mw SessionMiddleware) setSessionID(writer http.ResponseWriter) {
 }
 
 func (mw SessionMiddleware) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	cookie, err := request.Cookie("SN-SessionID")
-	if err == nil {
-		sessionID = cookie.Value
+	if mw.Config.GetBool("debug") {
+		// In debug mode, we don't persist session IDs so that multiple tabs can be used
+		// in the same browser.
+		sessionID = ksuid.New().String()
+	} else {
+		cookie, err := request.Cookie("SN-SessionID")
+		if err == nil {
+			sessionID = cookie.Value
 
-		if cookie.Expires.Compare(time.Now().Add(5*24*time.Hour)) == -1 {
+			if cookie.Expires.Compare(time.Now().Add(5*24*time.Hour)) == -1 {
+				mw.setSessionID(writer)
+			}
+		} else {
+			sessionID = ksuid.New().String()
 			mw.setSessionID(writer)
 		}
-	} else {
-		sessionID = ksuid.New().String()
-		mw.setSessionID(writer)
 	}
 
 	mw.Next.ServeHTTP(writer, request)
