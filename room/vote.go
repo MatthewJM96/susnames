@@ -61,13 +61,15 @@ func (r *Room) EndVoting() {
 		return
 	}
 
-	// Call again as while it will often do nothing, if the timer was to start at the
-	// very moment voting was voted to end (a.k.a. majority agreed the clue couldn't
-	// lead to voting for any cards, but someone at that moment voted for a card), then
-	// there could be a race condition reaching this function.
-	r.VoteTimer.Stop()
+	if r.VoteTimer != nil {
+		// Call again as while it will often do nothing, if the timer was to start at the
+		// very moment voting was voted to end (a.k.a. majority agreed the clue couldn't
+		// lead to voting for any cards, but someone at that moment voted for a card), then
+		// there could be a race condition reaching this function.
+		r.VoteTimer.Stop()
 
-	r.VoteTimer = nil
+		r.VoteTimer = nil
+	}
 
 	r.Grid.EvaluateVote()
 	r.Turn = player.SPYMASTER
