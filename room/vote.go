@@ -133,6 +133,8 @@ func (r *Room) VoteCard(cardIndex int, p *player.Player) {
 			r.PlayersVoted += 1
 
 			if r.PlayersVoted == r.VoteTimerAt {
+				r.Log.Info(fmt.Sprintf("voting open, ends in %s", r.VoteTime.String()))
+
 				r.VoteTimer = time.AfterFunc(
 					r.VoteTime,
 					func() {

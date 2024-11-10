@@ -301,9 +301,9 @@ func (r *Room) SuggestClue(clue string, matches int, p *player.Player) {
 		)
 	}
 
-	r.Log.Info(fmt.Sprintf("voting open, ends in %s", r.VoteTime.String()))
-
 	if r.VoteTimerAt == 0 {
+		r.Log.Info(fmt.Sprintf("voting open, ends in %s", r.VoteTime.String()))
+
 		r.VoteTimer = time.AfterFunc(
 			r.VoteTime,
 			func() {
