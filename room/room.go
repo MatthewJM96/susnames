@@ -103,6 +103,43 @@ func GetRoom(name string) *Room {
 	return rooms[name]
 }
 
+func (r *Room) ConfigureGameSettings(
+	counterspies int,
+	voteTimerDuration int,
+	voteTimerAt int,
+	endVotingOn int,
+) {
+	if counterspies >= len(r.Players) {
+		r.Log.Error("Tried to configure a game with a number of counterspies greater than total number of possible spies.")
+		return
+	}
+
+	if voteTimerDuration <= 0 {
+		r.Log.Error("Tried to configure a game with a timer duration of 0s or less.")
+		return
+	}
+
+	if counterspies <= -1 {
+		r.Counterspies = -1
+	} else {
+		r.Counterspies = counterspies
+	}
+
+	r.VoteTime = time.Duration(voteTimerDuration) * time.Second
+
+	if voteTimerAt <= 0 {
+		r.VoteTimerAt = 0
+	} else {
+		r.VoteTimerAt = voteTimerAt
+	}
+
+	if endVotingOn <= 0 {
+		r.EndVotingOn = 0
+	} else {
+		r.EndVotingOn = endVotingOn
+	}
+}
+
 func (r *Room) assignRoles() {
 	r.PlayersMutex.Lock()
 

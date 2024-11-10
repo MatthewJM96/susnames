@@ -34,6 +34,8 @@ type command struct {
 	Cmd   string `json:"cmd"`
 	Data0 string `json:"data0"`
 	Data1 string `json:"data1"`
+	Data2 string `json:"data2"`
+	Data3 string `json:"data3"`
 }
 
 func newConnectionManager(

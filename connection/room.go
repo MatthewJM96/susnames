@@ -59,6 +59,32 @@ func ConnectPlayerToRoom(writer http.ResponseWriter, request *http.Request, r *r
 
 func (c *connectionManager) processCommand(comm *command) {
 	switch comm.Cmd {
+	case "configure-game":
+		counterspies, err := strconv.Atoi(comm.Data0)
+		if err != nil {
+			c.Room.Log.Error(fmt.Sprintf("could not parse Data0 as integer (counterspies): %s", comm.Data0))
+			return
+		}
+
+		voteTimerDuration, err := strconv.Atoi(comm.Data1)
+		if err != nil {
+			c.Room.Log.Error(fmt.Sprintf("could not parse Data1 as integer (vote timer duration): %s", comm.Data1))
+			return
+		}
+
+		voteTimerAt, err := strconv.Atoi(comm.Data2)
+		if err != nil {
+			c.Room.Log.Error(fmt.Sprintf("could not parse Data2 as integer (vote timer at): %s", comm.Data2))
+			return
+		}
+
+		endVotingOn, err := strconv.Atoi(comm.Data3)
+		if err != nil {
+			c.Room.Log.Error(fmt.Sprintf("could not parse Data3 as integer (end voting after): %s", comm.Data3))
+			return
+		}
+
+		c.Room.ConfigureGameSettings(counterspies, voteTimerDuration, voteTimerAt, endVotingOn)
 	case "start-game":
 		c.Room.StartGame()
 	case "suggest-clue":
