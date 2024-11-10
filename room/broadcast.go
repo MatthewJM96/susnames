@@ -78,7 +78,7 @@ func (r *Room) BroadcastCard(ctx context.Context, p *player.Player, card *grid.C
 	buf := new(bytes.Buffer)
 
 	if p.Role == player.SPYMASTER {
-		components.SpymasterCard(card, card.Index).Render(ctx, buf)
+		components.SpymasterCard(card).Render(ctx, buf)
 	} else {
 		components.SpyCard(
 			card,

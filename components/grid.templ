@@ -3,16 +3,33 @@ package components
 import "strconv"
 import "github.com/MatthewJM96/susnames/grid"
 
-templ SpymasterCard(card *grid.Card, index int) {
+templ selectedCard(card *grid.Card) {
 	switch card.Type {
 	case grid.CIVILIAN:
-		<div id={ "card-" + card.Word } class="card card-civilian">{ card.Word }</div>
+		<div id={ "card-" + card.Word } class="card selected card-civilian">{ card.Word }</div>
 	case grid.SPY_TARGET:
-		<div id={ "card-" + card.Word } class="card card-spy-target">{ card.Word }</div>
+		<div id={ "card-" + card.Word } class="card selected card-spy-target">{ card.Word }</div>
 	case grid.COUNTERSPY_TARGET:
-		<div id={ "card-" + card.Word } class="card card-counterspy-target">{ card.Word }</div>
+		<div id={ "card-" + card.Word } class="card selected card-counterspy-target">{ card.Word }</div>
 	default:
-		<div id={ "card-" + card.Word } class="card">{ card.Word }</div>
+		<div id={ "card-" + card.Word } class="card selected">{ card.Word }</div>
+	}
+}
+
+templ SpymasterCard(card *grid.Card) {
+	if card.Selected {
+		@selectedCard(card)
+	} else {
+		switch card.Type {
+		case grid.CIVILIAN:
+			<div id={ "card-" + card.Word } class="card card-civilian">{ card.Word }</div>
+		case grid.SPY_TARGET:
+			<div id={ "card-" + card.Word } class="card card-spy-target">{ card.Word }</div>
+		case grid.COUNTERSPY_TARGET:
+			<div id={ "card-" + card.Word } class="card card-counterspy-target">{ card.Word }</div>
+		default:
+			<div id={ "card-" + card.Word } class="card">{ card.Word }</div>
+		}
 	}
 }
 
@@ -26,7 +43,7 @@ templ spyCardVoteButton(card *grid.Card, index int, sessionID string) {
 
 templ SpyCard(card *grid.Card, index int, isCounterspy bool, voting bool, sessionID string) {
 	if card.Selected {
-		@SpymasterCard(card, index)
+		@selectedCard(card)
 	} else {
 		if isCounterspy && card.Type == grid.COUNTERSPY_TARGET {
 			<div id={ "card-" + card.Word } class="card card-counterspy-target">
@@ -51,7 +68,7 @@ templ SpymasterGrid(grid *grid.Grid) {
 		for i := range 5 {
 			<div class="card-row">
 				for j := range 5 {
-					@SpymasterCard(grid.Cards[i * 5 + j], i * 5 + j)
+					@SpymasterCard(grid.Cards[i * 5 + j])
 				}
 			</div>
 		}

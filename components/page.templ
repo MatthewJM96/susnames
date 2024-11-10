@@ -201,7 +201,15 @@ templ Page(components ...templ.Component) {
                 text-align: center;
 
                 border-radius: 6px;
-                background-color: bisque;
+                background-color: #ffe4c4;
+
+                border-style: solid;
+                border-width: 2px;
+                box-sizing: border-box;
+                border-color: #ffe4c4;
+            }
+            .card.selected {
+                border-color: #ffcd91;
             }
 
             .card:not(:last-child) {
@@ -224,12 +232,24 @@ templ Page(components ...templ.Component) {
 
             .card-spy-target {
                 background-color: #c4ffe4;
+                border-color: #c4ffe4;
+            }
+            .card.card-spy-target.selected {
+                border-color: #91ffcd;
             }
             .card-counterspy-target {
                 background-color: #ffc4df;
+                border-color: #ffc4df;
+            }
+            .card.card-counterspy-target.selected {
+                border-color: #ff91c3;
             }
             .card-civilian {
                 background-color: #c4dfff;
+                border-color: #c4dfff;
+            }
+            .card.card-civilian.selected {
+                border-color: #91c3ff;
             }
 
             #timer {
