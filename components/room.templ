@@ -8,6 +8,30 @@ templ EmptyGameControl() {
 
 templ GameControl(room_name string) {
 	<div id="game-control">
+		<div id="configure-game">
+			<strong>Game Settings</strong>
+			<br>
+			<br>
+			<form ws-send hx-vals='{"cmd": "configure-game"}' hx-trigger="changed">
+				<div>
+					<span>Counterspies:</span>
+					<input type="number" name="data0" value="-1">
+				</div>
+				<div>
+					<span>Vote timer duration:</span>
+					<input type="number" name="data1" value="30">
+				</div>
+				<div>
+					<span>Vote timer at:</span>
+					<input type="number" name="data2" value="0">
+				</div>
+				<div>
+					<span>End voting after:</span>
+					<input type="number" name="data3" value="-1">
+				</div>
+			</form>
+		</div>
+
 		<form id="start-game" ws-send hx-vals='{"cmd": "start-game"}'>
 			<button>Start Game</button>
 		</form>
@@ -49,6 +73,8 @@ templ Room(room_name string) {
 			<button>Change Name</button>
 			<input type="text" name="data0" placeholder="name">
 		</form>
+
+		<br>
 
 		@GameControl(room_name)
 

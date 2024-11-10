@@ -174,15 +174,34 @@ templ Page(components ...templ.Component) {
             }
 
             #game-control {
-                margin-right: 2.5rem;
-                float: right;
-            }
+                margin: 0 auto;
 
-            #start-game {
-                padding: 0.8rem;
+                height: fit-content;
+                width: fit-content;
 
                 background-color: antiquewhite;
                 border-radius: 5px;
+            }
+
+            #start-game, #configure-game {
+                display: block;
+
+                padding: 0.8rem;
+            }
+            #start-game {
+                width: fit-content;
+                margin: 0 auto;
+            }
+            #configure-game > strong {
+                font-size: 1.1em;
+            }
+            #configure-game > form > div {
+                height: fit-content;
+                contain: layout;
+            }
+            #configure-game > form > div > input {
+                font-size: 1.0em;
+                float: right;
             }
 
             #grid {

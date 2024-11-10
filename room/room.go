@@ -60,7 +60,7 @@ type Room struct {
 
 var rooms map[string]*Room = make(map[string]*Room)
 
-const DEFAULT_VOTE_TIME = 300 * time.Second
+const DEFAULT_VOTE_TIME = 30 * time.Second
 
 func generateRoomName() string {
 	return util.GenerateRandomThreePartName()
