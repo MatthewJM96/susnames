@@ -12,7 +12,7 @@ templ GameControl(room_name string) {
 			<strong>Game Settings</strong>
 			<br>
 			<br>
-			<form ws-send hx-vals='{"cmd": "configure-game"}' hx-trigger="changed">
+			<form ws-send hx-vals='{"cmd": "configure-game"}' hx-trigger="change">
 				<div>
 					<span>Counterspies:</span>
 					<input type="number" name="data0" value="-1">
