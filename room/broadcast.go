@@ -6,10 +6,11 @@ import (
 
 	"github.com/MatthewJM96/susnames/components"
 	"github.com/MatthewJM96/susnames/grid"
+	"github.com/MatthewJM96/susnames/player"
 	"github.com/a-h/templ"
 )
 
-func (r *Room) broadcastMessage(messageFunc func(*Player) ([]byte, bool)) {
+func (r *Room) broadcastMessage(messageFunc func(*player.Player) ([]byte, bool)) {
 	r.PlayersMutex.Lock()
 	defer r.PlayersMutex.Unlock()
 
@@ -28,25 +29,25 @@ func (r *Room) broadcastMessage(messageFunc func(*Player) ([]byte, bool)) {
 	}
 }
 
-func (r *Room) broadcastMessageToPlayer(message []byte, player *Player) {
+func (r *Room) broadcastMessageToPlayer(message []byte, p *player.Player) {
 	select {
-	case player.Msgs <- message:
+	case p.Msgs <- message:
 	default:
-		go player.CloseConn()
+		go p.CloseConn()
 	}
 }
 
-func (r *Room) broadcastPlayerList(ctx context.Context) {
+func (r *Room) BroadcastPlayerList(ctx context.Context) {
 	r.broadcastMessage(
-		func(player *Player) ([]byte, bool) {
+		func(p *player.Player) ([]byte, bool) {
 			buf := new(bytes.Buffer)
 
 			tags := make([]templ.Component, 0, len(r.Players))
 
-			tags = append(tags, components.PlayerNameTag(player.Name, getPlayerRoleClass(player.Role)))
+			tags = append(tags, components.PlayerNameTag(p.Name, player.GetPlayerRoleClass(p.Role)))
 
 			for _, targetPlayer := range r.Players {
-				if player == targetPlayer {
+				if p == targetPlayer {
 					continue
 				}
 
@@ -54,7 +55,7 @@ func (r *Room) broadcastPlayerList(ctx context.Context) {
 					tags,
 					components.PlayerNameTag(
 						targetPlayer.Name,
-						getViewablePlayerRoleClass(player.Role, targetPlayer.Role),
+						player.GetViewablePlayerRoleClass(p.Role, targetPlayer.Role),
 					),
 				)
 			}
@@ -66,7 +67,7 @@ func (r *Room) broadcastPlayerList(ctx context.Context) {
 	)
 }
 
-func (r *Room) broadcastCard(ctx context.Context, player *Player, card *grid.Card) {
+func (r *Room) BroadcastCard(ctx context.Context, p *player.Player, card *grid.Card) {
 	r.GameStateMutex.Lock()
 	defer r.GameStateMutex.Unlock()
 
@@ -76,36 +77,44 @@ func (r *Room) broadcastCard(ctx context.Context, player *Player, card *grid.Car
 
 	buf := new(bytes.Buffer)
 
-	components.Card(
-		card,
-		card.Index,
-		r.Turn == SPY && (player.Role == SPY || player.Role == COUNTERSPY),
-		player.Role == SPYMASTER,
-		player.SessionID,
-	).Render(ctx, buf)
+	if p.Role == player.SPYMASTER {
+		components.SpymasterCard(card, card.Index).Render(ctx, buf)
+	} else {
+		components.SpyCard(
+			card,
+			card.Index,
+			p.Role == player.COUNTERSPY,
+			r.Turn == player.SPY,
+			p.SessionID,
+		).Render(ctx, buf)
+	}
 
-	r.broadcastMessageToPlayer(buf.Bytes(), player)
+	r.broadcastMessageToPlayer(buf.Bytes(), p)
 }
 
-func (r *Room) makeGameState(ctx context.Context, player *Player) []byte {
+func (r *Room) makeGameState(ctx context.Context, p *player.Player) []byte {
 	buf := new(bytes.Buffer)
 
-	components.Grid(
-		r.Grid,
-		r.Turn == SPY && (player.Role == SPY || player.Role == COUNTERSPY),
-		player.Role == SPYMASTER,
-		player.SessionID,
-	).Render(ctx, buf)
+	if p.Role == player.SPYMASTER {
+		components.SpymasterGrid(r.Grid).Render(ctx, buf)
+	} else {
+		components.SpyGrid(
+			r.Grid,
+			p.Role == player.COUNTERSPY,
+			r.Turn == player.SPY,
+			p.SessionID,
+		).Render(ctx, buf)
+	}
 	components.EmptyGameControl().Render(ctx, buf)
 
-	if r.Turn == SPYMASTER {
-		if player.Role == SPYMASTER {
+	if r.Turn == player.SPYMASTER {
+		if p.Role == player.SPYMASTER {
 			components.ClueSuggestor().Render(ctx, buf)
 		} else {
 			components.EmptySpymasterSuggestion().Render(ctx, buf)
 		}
-	} else if r.Turn == SPY {
-		if player.Role == SPY || player.Role == COUNTERSPY {
+	} else if r.Turn == player.SPY {
+		if p.Role == player.SPY || p.Role == player.COUNTERSPY {
 			components.Clue(r.Clue, r.ClueMatches, true).Render(ctx, buf)
 		} else {
 			components.Clue(r.Clue, r.ClueMatches, false).Render(ctx, buf)
@@ -115,7 +124,7 @@ func (r *Room) makeGameState(ctx context.Context, player *Player) []byte {
 	return buf.Bytes()
 }
 
-func (r *Room) broadcastGameState(ctx context.Context) {
+func (r *Room) BroadcastGameState(ctx context.Context) {
 	r.GameStateMutex.Lock()
 	defer r.GameStateMutex.Unlock()
 
@@ -124,27 +133,27 @@ func (r *Room) broadcastGameState(ctx context.Context) {
 	}
 
 	r.broadcastMessage(
-		func(player *Player) ([]byte, bool) {
-			return r.makeGameState(ctx, player), false
+		func(p *player.Player) ([]byte, bool) {
+			return r.makeGameState(ctx, p), false
 		},
 	)
 
-	r.broadcastPlayerList(ctx)
+	r.BroadcastPlayerList(ctx)
 }
 
-func (r *Room) broadcastClue(ctx context.Context) {
+func (r *Room) BroadcastClue(ctx context.Context) {
 	r.GameStateMutex.Lock()
 	defer r.GameStateMutex.Unlock()
 
-	if !r.Started || r.Turn != SPY {
+	if !r.Started || r.Turn != player.SPY {
 		return
 	}
 
 	r.broadcastMessage(
-		func(p *Player) ([]byte, bool) {
+		func(p *player.Player) ([]byte, bool) {
 			buf := new(bytes.Buffer)
 
-			if p.Role == SPY || p.Role == COUNTERSPY {
+			if p.Role == player.SPY || p.Role == player.COUNTERSPY {
 				components.Clue(r.Clue, r.ClueMatches, true).Render(ctx, buf)
 			} else {
 				components.Clue(r.Clue, r.ClueMatches, false).Render(ctx, buf)
@@ -154,23 +163,23 @@ func (r *Room) broadcastClue(ctx context.Context) {
 		},
 	)
 
-	r.broadcastPlayerList(ctx)
+	r.BroadcastPlayerList(ctx)
 }
 
-func (r *Room) broadcastClueSuggestor(ctx context.Context) {
+func (r *Room) BroadcastClueSuggestor(ctx context.Context) {
 	r.GameStateMutex.Lock()
 	defer r.GameStateMutex.Unlock()
 
-	if !r.Started || r.Turn != SPYMASTER {
+	if !r.Started || r.Turn != player.SPYMASTER {
 		return
 	}
 
 	r.broadcastMessage(
-		func(player *Player) ([]byte, bool) {
+		func(p *player.Player) ([]byte, bool) {
 
 			buf := new(bytes.Buffer)
 
-			if player.Role != SPYMASTER {
+			if p.Role != player.SPYMASTER {
 				components.EmptySpymasterSuggestion().Render(ctx, buf)
 			} else {
 				components.ClueSuggestor().Render(ctx, buf)
@@ -180,10 +189,10 @@ func (r *Room) broadcastClueSuggestor(ctx context.Context) {
 		},
 	)
 
-	r.broadcastPlayerList(ctx)
+	r.BroadcastPlayerList(ctx)
 }
 
-func (r *Room) broadcastGameStateToPlayer(ctx context.Context, player *Player) {
+func (r *Room) BroadcastGameStateToPlayer(ctx context.Context, p *player.Player) {
 	r.GameStateMutex.Lock()
 	defer r.GameStateMutex.Unlock()
 
@@ -191,10 +200,10 @@ func (r *Room) broadcastGameStateToPlayer(ctx context.Context, player *Player) {
 		return
 	}
 
-	r.broadcastMessageToPlayer(r.makeGameState(ctx, player), player)
+	r.broadcastMessageToPlayer(r.makeGameState(ctx, p), p)
 }
 
-func (r *Room) broadcastTimer(ctx context.Context) {
+func (r *Room) BroadcastTimer(ctx context.Context) {
 	r.GameStateMutex.Lock()
 	defer r.GameStateMutex.Unlock()
 
@@ -203,11 +212,10 @@ func (r *Room) broadcastTimer(ctx context.Context) {
 	}
 
 	r.broadcastMessage(
-		func(player *Player) ([]byte, bool) {
-
+		func(p *player.Player) ([]byte, bool) {
 			buf := new(bytes.Buffer)
 
-			if r.Turn == SPY && r.VoteTimer != nil {
+			if r.Turn == player.SPY && r.VoteTimer != nil {
 				components.Timer(r.VoteTime).Render(ctx, buf)
 			} else {
 				components.NoTimer().Render(ctx, buf)
@@ -217,5 +225,5 @@ func (r *Room) broadcastTimer(ctx context.Context) {
 		},
 	)
 
-	r.broadcastPlayerList(ctx)
+	r.BroadcastPlayerList(ctx)
 }

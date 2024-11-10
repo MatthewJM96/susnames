@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/MatthewJM96/susnames/components"
+	"github.com/MatthewJM96/susnames/connection"
 	"github.com/MatthewJM96/susnames/room"
 )
 
@@ -50,5 +51,5 @@ func (h *Handler) ConnectPlayerToRoom(writer http.ResponseWriter, request *http.
 		return
 	}
 
-	room.ConnectPlayerToRoom(writer, request)
+	connection.ConnectPlayerToRoom(writer, request, room)
 }

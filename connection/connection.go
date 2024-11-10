@@ -1,4 +1,4 @@
-package room
+package connection
 
 import (
 	"log/slog"
@@ -7,6 +7,9 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/spf13/viper"
+
+	"github.com/MatthewJM96/susnames/player"
+	"github.com/MatthewJM96/susnames/room"
 )
 
 const MAX_MESSAGE_SIZE = 16384
@@ -23,8 +26,8 @@ type connectionManager struct {
 	Log    *slog.Logger
 
 	Conn   *websocket.Conn
-	Room   *Room
-	Player *Player
+	Room   *room.Room
+	Player *player.Player
 }
 
 type command struct {
@@ -37,8 +40,8 @@ func newConnectionManager(
 	config *viper.Viper,
 	log *slog.Logger,
 	connection *websocket.Conn,
-	room *Room,
-	player *Player,
+	room *room.Room,
+	player *player.Player,
 ) *connectionManager {
 	return &connectionManager{
 		config,
@@ -51,7 +54,7 @@ func newConnectionManager(
 
 func (c *connectionManager) readPump() {
 	defer c.Conn.Close()
-	defer c.Room.removePlayer(c.Player.SessionID)
+	defer c.Room.RemovePlayer(c.Player.SessionID)
 
 	c.Conn.SetReadLimit(MAX_MESSAGE_SIZE)
 	c.Conn.SetReadDeadline(time.Now().Add(PONG_PERIOD))
@@ -70,7 +73,7 @@ func (c *connectionManager) readPump() {
 			break
 		}
 
-		c.Room.processCommand(comm, c)
+		c.processCommand(comm)
 	}
 }
 

@@ -6,11 +6,12 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/MatthewJM96/susnames/grid"
+	"github.com/MatthewJM96/susnames/player"
+	"github.com/MatthewJM96/susnames/session"
 	"github.com/MatthewJM96/susnames/util"
 	"github.com/spf13/viper"
 )
@@ -21,7 +22,7 @@ type Room struct {
 
 	Name string
 
-	Players      map[string]*Player
+	Players      map[string]*player.Player
 	PlayersMutex sync.Mutex
 
 	GameStateMutex sync.Mutex
@@ -49,7 +50,7 @@ type Room struct {
 
 	// Game state that at most displayed to players.
 
-	Turn         PlayerRole
+	Turn         player.PlayerRole
 	Clue         string
 	ClueMatches  int
 	Grid         *grid.Grid
@@ -85,7 +86,7 @@ func CreateRoom(config *viper.Viper, log *slog.Logger) (*Room, error) {
 		Config:       config,
 		Log:          log,
 		Name:         name,
-		Players:      make(map[string]*Player),
+		Players:      make(map[string]*player.Player),
 		Started:      false,
 		Spies:        0,
 		Counterspies: -1,
@@ -112,10 +113,10 @@ func (r *Room) assignRoles() {
 
 	foundSpymaster := false
 	r.Spies = 0
-	for _, player := range r.Players {
-		if player.Role == SPYMASTER {
+	for _, p := range r.Players {
+		if p.Role == player.SPYMASTER {
 			foundSpymaster = true
-		} else if player.Role == SPY {
+		} else if p.Role == player.SPY {
 			r.Spies += 1
 		}
 	}
@@ -136,13 +137,13 @@ func (r *Room) assignRoles() {
 
 	if !foundSpymaster {
 		idx := util.Rnd.Intn(r.Spies)
-		for _, player := range r.Players {
-			if player.Role != SPY {
+		for _, p := range r.Players {
+			if p.Role != player.SPY {
 				continue
 			}
 
 			if idx == 0 {
-				player.Role = SPYMASTER
+				p.Role = player.SPYMASTER
 				break
 			}
 
@@ -157,13 +158,13 @@ func (r *Room) assignRoles() {
 
 	for range r.Counterspies {
 		idx := util.Rnd.Intn(r.Spies)
-		for _, player := range r.Players {
-			if player.Role != SPY {
+		for _, p := range r.Players {
+			if p.Role != player.SPY {
 				continue
 			}
 
 			if idx == 0 {
-				player.Role = COUNTERSPY
+				p.Role = player.COUNTERSPY
 				break
 			}
 
@@ -175,12 +176,12 @@ func (r *Room) assignRoles() {
 	r.PlayersMutex.Unlock()
 }
 
-func (r *Room) startGame() {
+func (r *Room) StartGame() {
 	r.GameStateMutex.Lock()
 	defer r.GameStateMutex.Unlock()
 
 	r.Started = true
-	r.Turn = SPYMASTER
+	r.Turn = player.SPYMASTER
 	r.Grid = grid.CreateGridFromWords(
 		12,
 		6,
@@ -203,29 +204,29 @@ func (r *Room) startGame() {
 		r.EndVotingOn = r.Spies
 	}
 
-	go r.broadcastGameState(context.Background())
+	go r.BroadcastGameState(context.Background())
 }
 
-func (r *Room) voteEndClueGuessing(conn *connectionManager) {
+func (r *Room) VoteEndClueGuessing(p *player.Player) {
 	r.GameStateMutex.Lock()
 
-	if r.Turn != SPY {
+	if r.Turn != player.SPY {
 		r.Log.Error(
 			fmt.Sprintf(
 				"(%s, %s) tried to stop guessing while it wasn't the Spies' go",
-				conn.Player.SessionID,
-				conn.Player.Name,
+				p.SessionID,
+				p.Name,
 			),
 		)
 		return
 	}
 
-	if conn.Player.Role != SPY && conn.Player.Role != COUNTERSPY {
+	if p.Role != player.SPY && p.Role != player.COUNTERSPY {
 		r.Log.Error(
 			fmt.Sprintf(
 				"(%s, %s) tried to stop guessing but is not a Spy",
-				conn.Player.SessionID,
-				conn.Player.Name,
+				p.SessionID,
+				p.Name,
 			),
 		)
 		return
@@ -235,13 +236,13 @@ func (r *Room) voteEndClueGuessing(conn *connectionManager) {
 	if r.VoteEndVotes >= r.EndVotingOn || r.VoteEndVotes == r.Spies {
 		r.Log.Info("voting closed by players")
 
-		go r.endVoting()
+		go r.EndVoting()
 	} else {
 		r.Log.Info(
 			fmt.Sprintf(
 				"(%s, %s) ended guessing, %d more to end vote",
-				conn.Player.SessionID,
-				conn.Player.Name,
+				p.SessionID,
+				p.Name,
 				r.EndVotingOn-r.VoteEndVotes,
 			),
 		)
@@ -250,41 +251,41 @@ func (r *Room) voteEndClueGuessing(conn *connectionManager) {
 	r.GameStateMutex.Unlock()
 }
 
-func (r *Room) suggestClue(clue string, matches int, conn *connectionManager) {
+func (r *Room) SuggestClue(clue string, matches int, p *player.Player) {
 	r.GameStateMutex.Lock()
 	defer r.GameStateMutex.Unlock()
 
-	if r.Turn != SPYMASTER {
+	if r.Turn != player.SPYMASTER {
 		r.Log.Error(
 			fmt.Sprintf(
 				"(%s, %s) tried to suggest clue while it wasn't the Spymaster's go",
-				conn.Player.SessionID,
-				conn.Player.Name,
+				p.SessionID,
+				p.Name,
 			),
 		)
 		return
 	}
 
-	if conn.Player.Role != SPYMASTER {
+	if p.Role != player.SPYMASTER {
 		r.Log.Error(
 			fmt.Sprintf(
 				"(%s, %s) tried to suggest clue but is not the Spymaster",
-				conn.Player.SessionID,
-				conn.Player.Name,
+				p.SessionID,
+				p.Name,
 			),
 		)
 		return
 	}
 
-	r.Turn = SPY
+	r.Turn = player.SPY
 	r.Clue = clue
 	r.ClueMatches = matches
 
 	r.Log.Info(
 		fmt.Sprintf(
 			"(%s, %s) suggested clue (%s, %d)",
-			conn.Player.SessionID,
-			conn.Player.Name,
+			p.SessionID,
+			p.Name,
 			r.Clue,
 			r.ClueMatches,
 		),
@@ -302,8 +303,8 @@ func (r *Room) suggestClue(clue string, matches int, conn *connectionManager) {
 		r.Log.Error(
 			fmt.Sprintf(
 				"(%s, %s) tried to suggest clue while vote timer was active",
-				conn.Player.SessionID,
-				conn.Player.Name,
+				p.SessionID,
+				p.Name,
 			),
 		)
 	}
@@ -315,20 +316,20 @@ func (r *Room) suggestClue(clue string, matches int, conn *connectionManager) {
 			r.VoteTime,
 			func() {
 				r.Log.Info("voting closed by timeout")
-				r.endVoting()
+				r.EndVoting()
 			},
 		)
-		go r.broadcastTimer(context.Background())
+		go r.BroadcastTimer(context.Background())
 	}
 
-	go r.broadcastGameState(context.Background())
+	go r.BroadcastGameState(context.Background())
 }
 
-func (r *Room) endVoting() {
+func (r *Room) EndVoting() {
 	r.GameStateMutex.Lock()
 	defer r.GameStateMutex.Unlock()
 
-	if r.Turn != SPY {
+	if r.Turn != player.SPY {
 		r.GameStateMutex.Unlock()
 		return
 	}
@@ -342,51 +343,51 @@ func (r *Room) endVoting() {
 	r.VoteTimer = nil
 
 	r.Grid.EvaluateVote()
-	r.Turn = SPYMASTER
+	r.Turn = player.SPYMASTER
 
-	go r.broadcastGameState(context.Background())
-	go r.broadcastTimer(context.Background())
+	go r.BroadcastGameState(context.Background())
+	go r.BroadcastTimer(context.Background())
 }
 
-func (r *Room) voteCard(cardIndex int, conn *connectionManager) {
+func (r *Room) VoteCard(cardIndex int, p *player.Player) {
 	r.GameStateMutex.Lock()
 	defer r.GameStateMutex.Unlock()
 
-	if r.Turn != SPY {
+	if r.Turn != player.SPY {
 		r.Log.Error(
 			fmt.Sprintf(
 				"(%s, %s) tried to vote for a card while it wasn't the Spies' go",
-				conn.Player.SessionID,
-				conn.Player.Name,
+				p.SessionID,
+				p.Name,
 			),
 		)
 		return
 	}
 
-	if conn.Player.Role != SPY && conn.Player.Role != COUNTERSPY {
+	if p.Role != player.SPY && p.Role != player.COUNTERSPY {
 		r.Log.Error(
 			fmt.Sprintf(
 				"(%s, %s) tried to vote for a card but is not a Spy or Counterspy",
-				conn.Player.SessionID,
-				conn.Player.Name,
+				p.SessionID,
+				p.Name,
 			),
 		)
 		return
 	}
 
-	if conn.Player.Votes >= r.ClueMatches+1 {
+	if p.Votes >= r.ClueMatches+1 {
 		r.Log.Info(
 			fmt.Sprintf(
 				"(%s, %s) tried to vote for card %d but had hit max votes",
-				conn.Player.SessionID,
-				conn.Player.Name,
+				p.SessionID,
+				p.Name,
 				cardIndex,
 			),
 		)
 		return
 	}
 
-	voted, card, err := r.Grid.VoteCardAtIndex(cardIndex, conn.Player.SessionID)
+	voted, card, err := r.Grid.VoteCardAtIndex(cardIndex, p.SessionID)
 	if err != nil {
 		r.Log.Error(err.Error())
 	}
@@ -395,13 +396,13 @@ func (r *Room) voteCard(cardIndex int, conn *connectionManager) {
 		r.Log.Info(
 			fmt.Sprintf(
 				"(%s, %s) voted for card at index %d",
-				conn.Player.SessionID,
-				conn.Player.Name,
+				p.SessionID,
+				p.Name,
 				cardIndex,
 			),
 		)
 
-		if conn.Player.Votes == 0 {
+		if p.Votes == 0 {
 			r.PlayersVoted += 1
 
 			if r.PlayersVoted == r.VoteTimerAt {
@@ -409,55 +410,55 @@ func (r *Room) voteCard(cardIndex int, conn *connectionManager) {
 					r.VoteTime,
 					func() {
 						r.Log.Info("voting closed by timeout")
-						r.endVoting()
+						r.EndVoting()
 					},
 				)
-				go r.broadcastTimer(context.Background())
+				go r.BroadcastTimer(context.Background())
 			}
 		}
 
-		conn.Player.Votes += 1
+		p.Votes += 1
 
-		go r.broadcastCard(context.Background(), conn.Player, card)
+		go r.BroadcastCard(context.Background(), p, card)
 	} else {
 		r.Log.Warn(
 			fmt.Sprintf(
 				"(%s, %s) tried to vote for card at index %d but had already",
-				conn.Player.SessionID,
-				conn.Player.Name,
+				p.SessionID,
+				p.Name,
 				cardIndex,
 			),
 		)
 	}
 }
 
-func (r *Room) unvoteCard(cardIndex int, conn *connectionManager) {
+func (r *Room) UnvoteCard(cardIndex int, p *player.Player) {
 	r.GameStateMutex.Lock()
 	defer r.GameStateMutex.Unlock()
 
-	if r.Turn != SPY {
+	if r.Turn != player.SPY {
 		r.Log.Error(
 			fmt.Sprintf(
 				"(%s, %s) tried to select a card while it wasn't the Spies' go",
-				conn.Player.SessionID,
-				conn.Player.Name,
+				p.SessionID,
+				p.Name,
 			),
 		)
 		return
 	}
 
-	if conn.Player.Role != SPY && conn.Player.Role != COUNTERSPY {
+	if p.Role != player.SPY && p.Role != player.COUNTERSPY {
 		r.Log.Error(
 			fmt.Sprintf(
 				"(%s, %s) tried to suggest clue but is not the Spymaster",
-				conn.Player.SessionID,
-				conn.Player.Name,
+				p.SessionID,
+				p.Name,
 			),
 		)
 		return
 	}
 
-	unvoted, card, err := r.Grid.UnvoteCardAtIndex(cardIndex, conn.Player.SessionID)
+	unvoted, card, err := r.Grid.UnvoteCardAtIndex(cardIndex, p.SessionID)
 	if err != nil {
 		r.Log.Error(err.Error())
 	}
@@ -466,25 +467,25 @@ func (r *Room) unvoteCard(cardIndex int, conn *connectionManager) {
 		r.Log.Info(
 			fmt.Sprintf(
 				"(%s, %s) unvoted card at index %d",
-				conn.Player.SessionID,
-				conn.Player.Name,
+				p.SessionID,
+				p.Name,
 				cardIndex,
 			),
 		)
 
-		conn.Player.Votes -= 1
+		p.Votes -= 1
 
-		if conn.Player.Votes == 0 {
+		if p.Votes == 0 {
 			r.PlayersVoted -= 1
 		}
 
-		go r.broadcastCard(context.Background(), conn.Player, card)
+		go r.BroadcastCard(context.Background(), p, card)
 	} else {
 		r.Log.Warn(
 			fmt.Sprintf(
 				"(%s, %s) tried to unvote card at index %d but had not voted for it",
-				conn.Player.SessionID,
-				conn.Player.Name,
+				p.SessionID,
+				p.Name,
 				cardIndex,
 			),
 		)
@@ -504,39 +505,102 @@ func (r *Room) cookie(name string, value string) *http.Cookie {
 	}
 }
 
-func (r *Room) processCommand(comm *command, conn *connectionManager) {
-	switch comm.Cmd {
-	case "start-game":
-		r.startGame()
-	case "suggest-clue":
-		clueMatches, err := strconv.Atoi(comm.Data1)
-		if err != nil {
-			r.Log.Error(fmt.Sprintf("could not parse Data1 as integer (clue matches): %s", comm.Data1))
-			return
-		}
+func (r *Room) AddPlayer(writer http.ResponseWriter, request *http.Request) (*player.Player, error) {
+	r.PlayersMutex.Lock()
+	defer r.PlayersMutex.Unlock()
 
-		r.suggestClue(comm.Data0, clueMatches, conn)
-	case "vote-card":
-		cardIndex, err := strconv.Atoi(comm.Data0)
-		if err != nil {
-			r.Log.Error(fmt.Sprintf("could not parse Data0 as integer (card index): %s", comm.Data0))
-			return
-		}
+	sessionID := session.SessionID()
 
-		r.voteCard(cardIndex, conn)
-	case "unvote-card":
-		cardIndex, err := strconv.Atoi(comm.Data0)
-		if err != nil {
-			r.Log.Error(fmt.Sprintf("could not parse Data0 as integer (card index): %s", comm.Data0))
-			return
-		}
+	/**
+	 * Ensure player has not yet connected.
+	 */
 
-		r.unvoteCard(cardIndex, conn)
-	case "end-clue-guessing":
-		r.voteEndClueGuessing(conn)
-	case "change-name":
-		r.setPlayerName(comm.Data0)
-	default:
-		r.Log.Error(fmt.Sprintf("unrecognised command: %s", comm.Cmd))
+	_, exists := r.Players[sessionID]
+	if exists {
+		return nil, fmt.Errorf("player already exists with session ID: %s", sessionID)
 	}
+
+	/**
+	 * Obtain any existing name for player - maybe they've connected to the room before.
+	 * If they have not, however, then generate an appropriate default.
+	 */
+
+	name := player.GenerateRandomPlayerName()
+	cookie, err := request.Cookie("SN-Player-Name")
+	if err == nil {
+		name = cookie.Value
+	} else {
+		http.SetCookie(writer, r.cookie("SN-Player-Name", name))
+	}
+
+	player := player.NewPlayer(sessionID, name)
+	r.Players[sessionID] = player
+
+	r.Log.Info(fmt.Sprintf("added player: (%s, %s) to room %s", sessionID, player.Name, r.Name))
+
+	return player, nil
+}
+
+func (r *Room) RemovePlayer(sessionID string) error {
+	r.PlayersMutex.Lock()
+
+	player, exists := r.Players[sessionID]
+	if !exists {
+		return fmt.Errorf("player with session ID does not exist to remove from room: %s", sessionID)
+	}
+
+	r.Log.Info(fmt.Sprintf("removed player: (%s, %s) from room %s", sessionID, player.Name, r.Name))
+
+	delete(r.Players, sessionID)
+
+	r.PlayersMutex.Unlock()
+
+	r.BroadcastPlayerList(context.Background())
+
+	return nil
+}
+
+func (r *Room) GetPlayer(sessionID string) (*player.Player, error) {
+	player, exists := r.Players[sessionID]
+	if !exists || player == nil {
+		return nil, fmt.Errorf("no player exists with session ID: %s", sessionID)
+	}
+
+	return player, nil
+}
+
+func (r *Room) SetPlayerName(name string) {
+	sessionID := session.SessionID()
+
+	/**
+	 * Get player to set name of.
+	 */
+
+	p, err := r.GetPlayer(sessionID)
+	if err != nil {
+		r.Log.Error(err.Error())
+		return
+	}
+
+	/**
+	 * Generare a player name if we weren't given one. If in any case the name is not
+	 * to change, leave early.
+	 */
+
+	if name == "" {
+		name = player.GenerateRandomPlayerName()
+	}
+	if p.Name == name {
+		return
+	}
+
+	r.Log.Info(fmt.Sprintf("set player name: (%s, %s) to %s", sessionID, p.Name, name))
+
+	/**
+	 * Set player name and broadcast the change.
+	 */
+
+	p.Name = name
+
+	r.BroadcastPlayerList(context.Background())
 }
