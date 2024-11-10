@@ -67,7 +67,7 @@ func (r *Room) BroadcastPlayerList(ctx context.Context) {
 	)
 }
 
-func (r *Room) BroadcastCard(ctx context.Context, p *player.Player, card *grid.Card) {
+func (r *Room) BroadcastCardToPlayer(ctx context.Context, p *player.Player, card *grid.Card) {
 	r.GameStateMutex.Lock()
 	defer r.GameStateMutex.Unlock()
 
@@ -86,6 +86,32 @@ func (r *Room) BroadcastCard(ctx context.Context, p *player.Player, card *grid.C
 			p.Role == player.COUNTERSPY,
 			r.Turn == player.SPY,
 			p.SessionID,
+			p.Votes < r.ClueMatches+1,
+		).Render(ctx, buf)
+	}
+
+	r.broadcastMessageToPlayer(buf.Bytes(), p)
+}
+
+func (r *Room) BroadcastGridToPlayer(ctx context.Context, p *player.Player, card *grid.Card) {
+	r.GameStateMutex.Lock()
+	defer r.GameStateMutex.Unlock()
+
+	if !r.Started {
+		return
+	}
+
+	buf := new(bytes.Buffer)
+
+	if p.Role == player.SPYMASTER {
+		components.SpymasterGrid(r.Grid).Render(ctx, buf)
+	} else {
+		components.SpyGrid(
+			r.Grid,
+			p.Role == player.COUNTERSPY,
+			r.Turn == player.SPY,
+			p.SessionID,
+			p.Votes < r.ClueMatches+1,
 		).Render(ctx, buf)
 	}
 
@@ -103,6 +129,7 @@ func (r *Room) makeGameState(ctx context.Context, p *player.Player) []byte {
 			p.Role == player.COUNTERSPY,
 			r.Turn == player.SPY,
 			p.SessionID,
+			p.Votes < r.ClueMatches+1,
 		).Render(ctx, buf)
 	}
 	components.EmptyGameControl().Render(ctx, buf)

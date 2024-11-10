@@ -146,7 +146,15 @@ func (r *Room) VoteCard(cardIndex int, p *player.Player) {
 
 		p.Votes += 1
 
-		go r.BroadcastCard(context.Background(), p, card)
+		/**
+		 * Broadcast whole grid if player has voted with their last vote (need to disable
+		 * their voting capability in that case).
+		 */
+		if p.Votes >= r.ClueMatches+1 {
+			go r.BroadcastGridToPlayer(context.Background(), p, card)
+		} else {
+			go r.BroadcastCardToPlayer(context.Background(), p, card)
+		}
 	} else {
 		r.Log.Warn(
 			fmt.Sprintf(
@@ -206,7 +214,16 @@ func (r *Room) UnvoteCard(cardIndex int, p *player.Player) {
 			r.PlayersVoted -= 1
 		}
 
-		go r.BroadcastCard(context.Background(), p, card)
+		/**
+		 * Broadcast whole grid if player has unvoted their last vote (need to reenable
+		 * their voting capability in that case).
+		 */
+		if p.Votes == r.ClueMatches {
+			go r.BroadcastGridToPlayer(context.Background(), p, card)
+		} else {
+			go r.BroadcastCardToPlayer(context.Background(), p, card)
+		}
+		go r.BroadcastGridToPlayer(context.Background(), p, card)
 	} else {
 		r.Log.Warn(
 			fmt.Sprintf(

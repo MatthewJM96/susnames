@@ -33,15 +33,17 @@ templ SpymasterCard(card *grid.Card) {
 	}
 }
 
-templ spyCardVoteButton(card *grid.Card, index int, sessionID string) {
+templ spyCardVoteButton(card *grid.Card, index int, sessionID string, canVote bool) {
 	if _, exists := card.Votes[sessionID]; exists {
-		<button class="card-unvote" ws-send hx-vals={ "{\"cmd\": \"unvote-card\", \"data0\": \"" + strconv.Itoa(index) + "\"}" }>✘</button>
+		<button id={ "card-unvote-" + card.Word } class="card-unvote" ws-send hx-vals={ "{\"cmd\": \"unvote-card\", \"data0\": \"" + strconv.Itoa(index) + "\"}" }>✘</button>
+	} else if !canVote {
+		<button id={ "card-vote-" + card.Word } class="card-vote disabled">✔</button>
 	} else {
-		<button class="card-vote" ws-send hx-vals={ "{\"cmd\": \"vote-card\", \"data0\": \"" + strconv.Itoa(index) + "\"}" }>✔</button>
+		<button id={ "card-vote-" + card.Word } class="card-vote" ws-send hx-vals={ "{\"cmd\": \"vote-card\", \"data0\": \"" + strconv.Itoa(index) + "\"}" }>✔</button>
 	}
 }
 
-templ SpyCard(card *grid.Card, index int, isCounterspy bool, voting bool, sessionID string) {
+templ SpyCard(card *grid.Card, index int, isCounterspy bool, voting bool, sessionID string, canVote bool) {
 	if card.Selected {
 		@selectedCard(card)
 	} else {
@@ -49,14 +51,14 @@ templ SpyCard(card *grid.Card, index int, isCounterspy bool, voting bool, sessio
 			<div id={ "card-" + card.Word } class="card card-counterspy-target">
 				{ card.Word }
 				if voting {
-					@spyCardVoteButton(card, index, sessionID)
+					@spyCardVoteButton(card, index, sessionID, canVote)
 				}
 			</div>
 		} else {
 			<div id={ "card-" + card.Word } class="card">
 				{ card.Word }
 				if voting {
-					@spyCardVoteButton(card, index, sessionID)
+					@spyCardVoteButton(card, index, sessionID, canVote)
 				}
 			</div>
 		}
@@ -75,12 +77,12 @@ templ SpymasterGrid(grid *grid.Grid) {
 	</div>
 }
 
-templ SpyGrid(grid *grid.Grid, isCounterspy bool, voting bool, sessionID string) {
+templ SpyGrid(grid *grid.Grid, isCounterspy bool, voting bool, sessionID string, canVote bool) {
 	<div id="grid">
 		for i := range 5 {
 			<div class="card-row">
 				for j := range 5 {
-					@SpyCard(grid.Cards[i * 5 + j], i * 5 + j, isCounterspy, voting, sessionID)
+					@SpyCard(grid.Cards[i * 5 + j], i * 5 + j, isCounterspy, voting, sessionID, canVote)
 				}
 			</div>
 		}
