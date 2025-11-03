@@ -87,7 +87,14 @@ func (r *Room) EndVoting() {
 		r.VoteTimer = nil
 	}
 
-	r.Grid.EvaluateVote()
+	cardVotedFor, err := r.Grid.EvaluateVote(r.ClueMatches)
+	if err != nil {
+		r.Log.Error(err.Error())
+	}
+	if !cardVotedFor {
+		r.Log.Info("no card voted for in last round")
+	}
+
 	r.Turn = player.SPYMASTER
 
 	go r.BroadcastGameState(context.Background())

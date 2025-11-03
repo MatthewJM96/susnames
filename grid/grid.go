@@ -1,8 +1,8 @@
 package grid
 
 import (
-	"errors"
 	"fmt"
+	"sort"
 	"sync"
 
 	"github.com/MatthewJM96/susnames/util"
@@ -153,22 +153,30 @@ func (g *Grid) UnvoteCardAtIndex(index int, voteID string) (bool, *Card, error) 
 
 	return true, card, nil
 }
-
-func (g *Grid) EvaluateVote() error {
-	highestVote := 0
-	highestIndex := -1
-	for index, card := range g.Cards {
-		if len(card.Votes) > highestVote {
-			highestVote = len(card.Votes)
-			highestIndex = index
+func (g *Grid) EvaluateVote(suggestionCount int) (bool, error) {
+	// Create a slice of cards with their vote counts
+	cardsWithVotes := make([]*Card, 0)
+	for _, card := range g.Cards {
+		if len(card.Votes) > 0 {
+			cardsWithVotes = append(cardsWithVotes, card)
 		}
 	}
 
-	if highestIndex == -1 {
-		return errors.New("no card received a vote in voting round")
+	// Sort the cards by vote count in descending order
+	sort.Slice(cardsWithVotes, func(i, j int) bool {
+		return len(cardsWithVotes[i].Votes) > len(cardsWithVotes[j].Votes)
+	})
+
+	// Select the top N cards with the most votes
+	selectedCards := cardsWithVotes[:min(suggestionCount, len(cardsWithVotes))]
+
+	g.GridMutex.Lock()
+	defer g.GridMutex.Unlock()
+
+	// Mark the selected cards as selected
+	for _, card := range selectedCards {
+		card.Selected = true
 	}
 
-	g.Cards[highestIndex].Selected = true
-
-	return nil
+	return len(selectedCards) > 0, nil
 }
