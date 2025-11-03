@@ -141,7 +141,7 @@ func (r *Room) makeGameState(ctx context.Context, p *player.Player) []byte {
 			components.EmptySpymasterSuggestion().Render(ctx, buf)
 		}
 	} else if r.Turn == player.SPY {
-		if p.Role == player.SPY || p.Role == player.COUNTERSPY {
+		if (p.Role == player.SPY || p.Role == player.COUNTERSPY) && !p.VotedEndGuessing {
 			components.Clue(r.Clue, r.ClueMatches, true).Render(ctx, buf)
 		} else {
 			components.Clue(r.Clue, r.ClueMatches, false).Render(ctx, buf)
@@ -180,7 +180,7 @@ func (r *Room) BroadcastClue(ctx context.Context) {
 		func(p *player.Player) ([]byte, bool) {
 			buf := new(bytes.Buffer)
 
-			if p.Role == player.SPY || p.Role == player.COUNTERSPY {
+			if (p.Role == player.SPY || p.Role == player.COUNTERSPY) && !p.VotedEndGuessing {
 				components.Clue(r.Clue, r.ClueMatches, true).Render(ctx, buf)
 			} else {
 				components.Clue(r.Clue, r.ClueMatches, false).Render(ctx, buf)

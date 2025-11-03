@@ -10,6 +10,7 @@ import (
 
 func (r *Room) VoteEndClueGuessing(p *player.Player) {
 	r.GameStateMutex.Lock()
+	defer r.GameStateMutex.Unlock()
 
 	if r.Turn != player.SPY {
 		r.Log.Error(
@@ -33,23 +34,39 @@ func (r *Room) VoteEndClueGuessing(p *player.Player) {
 		return
 	}
 
-	r.VoteEndVotes += 1
-	if r.VoteEndVotes >= r.EndVotingOn || r.VoteEndVotes == r.Spies {
-		r.Log.Info("voting closed by players")
+	p.PlayerStateMutex.Lock()
+	defer p.PlayerStateMutex.Unlock()
 
-		go r.EndVoting()
+	if !p.VotedEndGuessing {
+		p.VotedEndGuessing = true
+		r.VoteEndVotes += 1
+		if r.VoteEndVotes >= r.EndVotingOn || r.VoteEndVotes == r.Spies {
+			r.Log.Info("voting closed by players")
+
+			go r.EndVoting()
+		} else {
+			r.Log.Info(
+				fmt.Sprintf(
+					"(%s, %s) ended guessing, %d more to end vote",
+					p.SessionID,
+					p.Name,
+					r.EndVotingOn-r.VoteEndVotes,
+				),
+			)
+
+			// This is okay despite broadcasting to all players as we next intend to
+			// broadcast the number that have ended guessing.
+			go r.BroadcastClue(context.Background())
+		}
 	} else {
 		r.Log.Info(
 			fmt.Sprintf(
-				"(%s, %s) ended guessing, %d more to end vote",
+				"(%s, %s) tried to end guessing, but had already ended guessing",
 				p.SessionID,
 				p.Name,
-				r.EndVotingOn-r.VoteEndVotes,
 			),
 		)
 	}
-
-	r.GameStateMutex.Unlock()
 }
 
 func (r *Room) EndVoting() {
@@ -57,7 +74,6 @@ func (r *Room) EndVoting() {
 	defer r.GameStateMutex.Unlock()
 
 	if r.Turn != player.SPY {
-		r.GameStateMutex.Unlock()
 		return
 	}
 
@@ -148,6 +164,9 @@ func (r *Room) VoteCard(cardIndex int, p *player.Player) {
 			}
 		}
 
+		p.PlayerStateMutex.Lock()
+		defer p.PlayerStateMutex.Unlock()
+
 		p.Votes += 1
 
 		/**
@@ -211,6 +230,9 @@ func (r *Room) UnvoteCard(cardIndex int, p *player.Player) {
 				cardIndex,
 			),
 		)
+
+		p.PlayerStateMutex.Lock()
+		defer p.PlayerStateMutex.Unlock()
 
 		p.Votes -= 1
 

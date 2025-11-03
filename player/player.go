@@ -1,6 +1,8 @@
 package player
 
 import (
+	"sync"
+
 	"github.com/MatthewJM96/susnames/util"
 )
 
@@ -49,7 +51,10 @@ type Player struct {
 
 	Role PlayerRole
 
-	Votes int
+	Votes            int
+	VotedEndGuessing bool
+
+	PlayerStateMutex sync.Mutex
 
 	Msgs      chan []byte
 	CloseConn func()
@@ -61,10 +66,11 @@ func GenerateRandomPlayerName() string {
 
 func NewPlayer(sessionID string, name string) *Player {
 	return &Player{
-		SessionID: sessionID,
-		Name:      name,
-		Role:      SPY,
-		Votes:     0,
-		Msgs:      make(chan []byte, 16),
+		SessionID:        sessionID,
+		Name:             name,
+		Role:             SPY,
+		Votes:            0,
+		VotedEndGuessing: false,
+		Msgs:             make(chan []byte, 16),
 	}
 }
