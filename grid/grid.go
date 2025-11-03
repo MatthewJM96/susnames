@@ -169,6 +169,24 @@ func (g *Grid) EvaluateVote(suggestionCount int) (bool, error) {
 
 	// Select the top N cards with the most votes
 	selectedCards := cardsWithVotes[:min(suggestionCount, len(cardsWithVotes))]
+	// unselectedCards := cardsWithVotes[min(suggestionCount, len(cardsWithVotes)):]
+
+	// // Early exit.
+	// if len(selectedCards) == 0 {
+	// 	return false, nil
+	// }
+
+	// // Determine the cards that have so far been selected but had the least votes.
+	// leastVoteSelected := len(selectedCards[len(selectedCards)-1].Votes)
+	// selectedCardsWithLeastVotes := make([]*Card, 0)
+	// selectedCardsWithLeastVotes = append(selectedCardsWithLeastVotes, selectedCards[len(selectedCards)-1])
+	// for idxOffset := range len(selectedCards) - 1 {
+	// 	idx := len(selectedCards) - 2 - idxOffset
+	// 	card := selectedCards[idx]
+	// 	if len(card.Votes) == leastVoteSelected {
+	// 		selectedCardsWithLeastVotes = append(selectedCardsWithLeastVotes, card)
+	// 	}
+	// }
 
 	g.GridMutex.Lock()
 	defer g.GridMutex.Unlock()
